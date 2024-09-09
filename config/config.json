@@ -1,0 +1,12 @@
+{
+"annotation_model": "models/TinyLlama_v1.1",
+"system_prompt": "prompts/prompt_019.txt",
+"character_prompt": "prompts/character_prompt.txt",
+"document_type": "literary text",
+"document": "books/of_mice_and_men.txt",
+"annotation_file": "output/output.json",
+"min_segment_length": 300,
+"min_overlap_length": 300,
+"number_of_last_character_in_prompt": 2,
+"tts_model": "tts/parler-tts-mini-v1"
+}

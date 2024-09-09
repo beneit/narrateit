@@ -1,0 +1,101 @@
+Annotate the following <DOCUMENT_TYPE> for an audiobook performance script by identifying the speaker for each line of dialogue and distinguishing between dialogue and narration.
+
+Known Speakers: Narration, <LIST_OF_SPEAKERS>, <Lennie>, <George>. New characters may appear.
+
+Guidelines:
+1. Include Narration like "he said" outside character speech in the narration speaker.
+2. Copy original text exactly, except for quote removal.
+3. Keep original order of text exactly
+
+Now annotate:
+
+Text: "<Lennie>!" <SUBJECT_PRONOUN_2> said sharply. "<Lennie>, for God’ sakes don’t drink so much." <Lennie> continued to snort into the pool. The small <GENDER_2> leaned over and shook <OBJECT_PRONOUN_1> by the shoulder. "<Lennie>. You gonna be sick like you was last night."
+output: {
+    "annotation": [
+        {
+            "speaker": "<George>",
+            "text": "<Lennie>!"
+        },
+        {
+            "speaker": "Narration",
+            "text": "<SUBJECT_PRONOUN_2> said sharply."
+        },
+        {
+            "speaker": "<George>",
+            "text": "<Lennie>, for God’ sakes don’t drink so much."
+        },
+        {
+            "speaker": "Narration",
+            "text": "<Lennie> continued to snort into the pool. The small <GENDER_2> leaned over and shook <OBJECT_PRONOUN_1> by the shoulder. "
+        },
+        {
+            "speaker": "<George>",
+            "text": "<Lennie>. You gonna be sick like you was last night."
+        }
+    ]
+}<EOS>
+
+Text: <George> unslung <POSSESSIVE_ADJ_2> bindle and dropped it gently on the bank. "I  ain’t sure it’s good water," <SUBJECT_PRONOUN_2> said. "Looks kinda scummy."
+output: {
+    "annotation": [
+        {
+            "speaker": "Narration",
+            "text": "<George> unslung <POSSESSIVE_ADJ_2> bindle and dropped it gently on the bank. "
+        },
+        {
+            "speaker": "<George>",
+            "text": "I  ain’t sure it’s good water,"
+        },
+        {
+            "speaker": "Narration",
+            "text": "<SUBJECT_PRONOUN_2> said. "
+        },
+        {
+            "speaker": "<George>",
+            "text": "Looks kinda scummy."
+        }
+    ]
+}<EOS>
+
+Text: <George> stared morosely at the water. The rims of <POSSESSIVE_ADJ_2> eyes were red with sun glare. <SUBJECT_PRONOUN_CAP_2> said angrily, "We could just as well of rode clear to the ranch if that mean bus driver knew what he was  talkin’ about. ‘Jes’ a little stretch down the highway,’ he says. ‘Jes’  a little stretch.’"
+
+<Lennie> looked timidly over to <OBJECT_PRONOUN_2>. "<George>?"  
+ "Yeah, what ya want?"  
+ "Where we goin’, <George>?"  
+ The little <GENDER_2> brought down the brim of <POSSESSIVE_ADJ_2> hat and scowled over  at <Lennie>. "So you forgot that awready, did you? I gotta tell you  again, do I? Jesus Christ, you’re a crazy person!"
+output: {
+    "annotation": [
+        {
+            "speaker": "Narration",
+            "text": "<George> stared morosely at the water. The rims of <POSSESSIVE_ADJ_2> eyes were red with sun glare. <SUBJECT_PRONOUN_CAP_2> said angrily, "
+        },
+        {
+            "speaker": "<George>",
+            "text": "We could just as well of rode clear to the ranch if that mean bus driver knew what he was  talkin’ about. ‘Jes’ a little stretch down the highway,’ he says. ‘Jes’  a little stretch.’"
+        },
+        {
+            "speaker": "Narration",
+            "text": "<Lennie> looked timidly over to <OBJECT_PRONOUN_2>. "
+        },
+        {
+            "speaker": "<Lennie>",
+            "text": "<George>?"
+        },
+        {
+            "speaker": "<George>",
+            "text": "Yeah, what ya want?"
+        },
+        {
+            "speaker": "<Lennie>",
+            "text": "Where we goin’, <George>?"
+        },
+        {
+            "speaker": "Narration",
+            "text": "The little <GENDER_2> brought down the brim of <POSSESSIVE_ADJ_2> hat and scowled over  at <Lennie>. "
+        },
+        {
+            "speaker": "<George>",
+            "text": "So you forgot that awready, did you? I gotta tell you  again, do I? Jesus Christ, you’re a crazy person!"
+        }
+    ]
+}

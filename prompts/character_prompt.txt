@@ -1,0 +1,10 @@
+Please specify the gender between the two options m (male) and f (female)
+
+name: Kyle
+gender: m
+
+name: Sabine
+gender: f
+
+name: <NAME>
+gender:
