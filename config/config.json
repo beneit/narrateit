@@ -1,12 +1,16 @@
 {
-"annotation_model": "models/TinyLlama_v1.1",
-"system_prompt": "prompts/prompt_019.txt",
-"character_prompt": "prompts/character_prompt.txt",
-"document_type": "literary text",
-"document": "books/of_mice_and_men.txt",
-"annotation_file": "output/output.json",
-"min_segment_length": 300,
-"min_overlap_length": 300,
-"number_of_last_character_in_prompt": 2,
-"tts_model": "tts/parler-tts-mini-v1"
+  "annotation_model": "models/Llama-3.2-3B-Instruct",
+  "peft_model": "examples_Llama-3.2-3B_PREFIX_TUNING_10_20",
+  "system_prompt": "prompts/prompt_021.txt",
+  "dialogue_prompt": "prompts/narration_dialogue_007.txt",
+  "dialogue_explanation_prompt": "prompts/narration_dialogue_explanation_name_001.txt",
+  "dialogue_explanation_prompt_both": "prompts/narration_dialogue_explanation_name_both_002.txt",
+  "character_prompt": "prompts/character_prompt.txt",
+  "document_type": "literary text",
+  "document": "books/hpmor_ch1_clean.txt",
+  "annotation_file": "output/hpmor_ch1_clean.json",
+  "min_segment_length": 300,
+  "min_overlap_length": 300,
+  "number_of_last_character_in_prompt": 2,
+  "tts_model": "tts/XTTS-v2"
 }

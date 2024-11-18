@@ -9,7 +9,7 @@ import pyloudnorm as pyln
 from tqdm import tqdm
 import warnings
 
-from .util import config
+from narrateit.util import config
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"

@@ -5,7 +5,7 @@ import json
 def create_segments(text, min_segment_length, min_overlap_length):
     # Split the text into sentences using the end of sentence indicators ".", "?", and "!"
     sentences = re.split(r'(?<=[.!?])', text)
-
+    
     segments = []
     idx_start = 0
     idx_end = 0
@@ -44,19 +44,21 @@ def create_dual_segments(sentences, min_segment_length, min_overlap_length):
 
 
 def get_prompt(initial_prompt, all_speakers=None, last_speakers=None, genders=None, replacements=None):
-    last_speakers = [] if last_speakers is None else last_speakers
-    if len(last_speakers) == 0:
-        last_speakers.append("Lennie")
-        genders = ['m']
-    if len(last_speakers) == 1:
-        last_speakers.append("George")
-        genders.append('m')
-    all_speakers = [] if all_speakers is None else all_speakers
+    last_speakers_ = [] if last_speakers is None else last_speakers.copy()
+    if len(last_speakers_) == 0:
+        last_speakers_.append("Lennie")
+        genders_ = ['m']
+    else:
+        genders_ = genders.copy()
+    if len(last_speakers_) == 1:
+        last_speakers_.append("George")
+        genders_.append('m')
+    all_speakers_ = [] if all_speakers is None else all_speakers.copy()
     list_of_speakers = ""
-    for a_speaker in all_speakers:
-        if a_speaker not in last_speakers:
+    for a_speaker in all_speakers_:
+        if a_speaker not in last_speakers_:
             list_of_speakers += "\n" + a_speaker
-
+    
     def create_pronoun_dict(g):
         pronouns = {
             'm': {
@@ -95,18 +97,18 @@ def get_prompt(initial_prompt, all_speakers=None, last_speakers=None, genders=No
                 if key in ['GENDER', 'SUBJECT_PRONOUN', 'OBJECT_PRONOUN', 'POSSESSIVE_ADJ', 'POSSESSIVE_PRONOUN']:
                     result[f'{key}_CAP_{i}'] = value.capitalize()
         return result
-
+    
     replacements.update({
-        "Lennie": last_speakers[0],
-        "George": last_speakers[1],
+        "Lennie": last_speakers_[0],
+        "George": last_speakers_[1],
         "LIST_OF_SPEAKERS": list_of_speakers
     })
-    replacements.update(create_pronoun_dict(genders))
-
+    replacements.update(create_pronoun_dict(genders_))
+    
     def replace_keyword(match):
         keyword = match.group(1)
         return replacements.get(keyword, match.group(0))
-
+    
     prompt = re.sub(r'<(.*?)>', replace_keyword, initial_prompt)
     return prompt
 
@@ -125,6 +127,20 @@ def append_prompt(prompt, text, previous_annotations):
         if i + 1 < len(previous_annotations):
             prompt += ","
     return prompt
+
+
+def append_previous_annotations(annotations):
+    """
+    special cases: 1. annotations are empty, last: text only has text from previous annotations
+    """
+    s = "{\n    \"annotation\": [\n"
+    for i, annotation in enumerate(annotations):
+        s += "        {\n"
+        s += "            \"speaker\": \"" + annotation['speaker'] + ",\n"
+        s += "            \"text\": \"" + annotation['text'] + "\"\n"
+        s += "        }"
+        s += ",\n"
+    return s
 
 
 def append_annotations(prompt, old_annotations):

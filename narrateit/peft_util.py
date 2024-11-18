@@ -3,7 +3,6 @@ import torch
 from peft import get_peft_model, PromptTuningConfig, TaskType, PromptTuningInit, PeftModel, PrefixTuningConfig
 from transformers import TrainingArguments, Trainer, DataCollatorForLanguageModeling, default_data_collator, get_linear_schedule_with_warmup, AutoTokenizer
 from datasets import load_dataset
-from transformer_util import load_model_tokenizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import transformers
@@ -13,25 +12,25 @@ import packaging.version
 from peft.utils import PeftType
 from peft.peft_model import PeftModelForCausalLM
 from .util import config
+from .transformer_util import load_model_tokenizer, load_tokenizer
 
 
-def create_peft_model(model, num_virtual_tokens=10):
-    peft_config = PrefixTuningConfig(task_type=TaskType.CAUSAL_LM, num_virtual_tokens=num_virtual_tokens)
-    # peft_config = PromptTuningConfig(
-    #     task_type=TaskType.CAUSAL_LM,  #This type indicates the model will generate text.
-    #     prompt_tuning_init=PromptTuningInit.RANDOM,  #The added virtual tokens are initializad with random numbers
-    #     # prompt_tuning_info=PromptTuningInit.TEXT,
-    #     # prompt_tuning_init_text="Initial text here",
-    #     num_virtual_tokens=10,  #Number of virtual tokens to be added and trained.
-    #     # tokenizer_name_or_path=config['llm_model']  #The tokenizer, only used if the prompt_tuning_init is TEXT
-    # )
-    # peft_config = PromptTuningConfig(
-    #     task_type=TaskType.CAUSAL_LM,
-    #     prompt_tuning_init=PromptTuningInit.TEXT,
-    #     num_virtual_tokens=num_virtual_tokens,
-    #     prompt_tuning_init_text="Classify if the tweet is a complaint or not:",
-    #     tokenizer_name_or_path=model_name_or_path,
-    # )
+def create_peft_model(model, num_virtual_tokens=10, initial_prompt=None, prefix_tuning=False):
+    # if initial_prompt is None:
+    #     initial_prompt = ""
+    prompt_tuning_init = PromptTuningInit.RANDOM if initial_prompt is None else PromptTuningInit.TEXT
+    tokenizer_name_or_path = config['annotation_model'] if initial_prompt is None else None
+    if prefix_tuning:
+        peft_config = PrefixTuningConfig(task_type=TaskType.CAUSAL_LM, num_virtual_tokens=num_virtual_tokens)
+    else:
+        peft_config = PromptTuningConfig(
+            task_type=TaskType.CAUSAL_LM,
+            prompt_tuning_init=prompt_tuning_init,
+            # prompt_tuning_info=PromptTuningInit.TEXT,
+            prompt_tuning_init_text=initial_prompt,
+            num_virtual_tokens=num_virtual_tokens,
+            tokenizer_name_or_path=config['annotation_model']
+        )
     peft_model = get_peft_model(model, peft_config)
     peft_model.print_trainable_parameters()
     return peft_model
@@ -50,20 +49,18 @@ def create_training_arguments(path, learning_rate=0.0035, epochs=6):
 def preprocess_function(examples):
     text_column = 'text'
     label_column = 'annotation'
-    tokenizer = AutoTokenizer.from_pretrained(config['llm_model'])
+    tokenizer = load_tokenizer(config['annotation_model'])
     batch_size = len(examples[text_column])
-    inputs = [f"{text_column} : {x}\noutput : " for x in examples[text_column]]
+    inputs = [f"input: {x}\noutput : " for x in examples[text_column]]
     targets = [str(x) for x in examples[label_column]]
     model_inputs = tokenizer(inputs)
     labels = tokenizer(targets)
     for i in range(batch_size):
         sample_input_ids = model_inputs["input_ids"][i]
         label_input_ids = labels["input_ids"][i] + [tokenizer.pad_token_id]
-        # print(i, sample_input_ids, label_input_ids)
         model_inputs["input_ids"][i] = sample_input_ids + label_input_ids
         labels["input_ids"][i] = [-100] * len(sample_input_ids) + label_input_ids
         model_inputs["attention_mask"][i] = [1] * len(model_inputs["input_ids"][i])
-    # print(model_inputs)
     max_length = max([len(model_inputs["input_ids"][i]) for i in range(batch_size)]) + 0
     for i in range(batch_size):
         sample_input_ids = model_inputs["input_ids"][i]
@@ -181,11 +178,11 @@ def train_peft(peft_model, dataset, output_directory=None, num_epochs=1, learnin
     # print(tokenizer.batch_decode(loaded_model_prompt_outputs, skip_special_tokens=True))
 
 
-def load_peft_model(model):
+def load_peft_model(model, model_path):
     from peft import PeftModel, PeftConfig
     
     working_dir = "peft_model/"
-    peft_model_id = os.path.join(working_dir, "peft_outputs_prompt")
+    peft_model_id = os.path.join(working_dir, model_path)
     
     # peft_config = PeftConfig.from_pretrained(peft_model_id)
     peft_model = PeftModel.from_pretrained(model, peft_model_id)
@@ -272,7 +269,7 @@ class PeftModelForCausalLM_mod(PeftModelForCausalLM):
 
 if __name__ == "__main__":
     num_virtual_tokens = 10
-    num_epochs = 10
+    num_epochs = 100
     learning_rate = 0.05
     
     dataset = "datasets/annotation"

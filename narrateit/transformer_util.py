@@ -11,6 +11,16 @@ from .util import write_to_file
 torch.random.manual_seed(0)
 
 
+def load_tokenizer(model_path):
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
+    tokenizer.appended_token = int(tokenizer('}', return_tensors='pt').to('cuda')['input_ids'][0][-1])
+    tokenizer.curly1 = int(tokenizer('{', return_tensors='pt').to('cuda')['input_ids'][0][-1])
+    tokenizer.curly2 = int(tokenizer('}', return_tensors='pt').to('cuda')['input_ids'][0][-1])
+    return tokenizer
+
+
 def load_model_tokenizer(model_path):
     print(f"Loading model '{model_path}'...")
     model = AutoModelForCausalLM.from_pretrained(
@@ -19,12 +29,7 @@ def load_model_tokenizer(model_path):
         torch_dtype="auto",
         trust_remote_code=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
-    if tokenizer.pad_token_id is None:
-        tokenizer.pad_token_id = tokenizer.eos_token_id
-    tokenizer.appended_token = int(tokenizer('}', return_tensors='pt').to('cuda')['input_ids'][0][-1])
-    tokenizer.curly1 = int(tokenizer('{', return_tensors='pt').to('cuda')['input_ids'][0][-1])
-    tokenizer.curly2 = int(tokenizer('}', return_tensors='pt').to('cuda')['input_ids'][0][-1])
+    tokenizer = load_tokenizer(model_path)
     model.past_states__ = None
     return model, tokenizer
 
@@ -60,10 +65,11 @@ def generate_annotations(prompt, model, tokenizer, max_new_tokens):
     
     stopping_criteria = StoppingCriteriaList([custom_stopping_criteria])
     
-    outputs = model.generate(inputs["input_ids"],
+    outputs = model.generate(**inputs,
                              do_sample=False,
                              max_new_tokens=max_new_tokens,
-                             stopping_criteria=stopping_criteria)
+                             stopping_criteria=stopping_criteria,
+                             pad_token_id=tokenizer.pad_token_id)
     generated_text = tokenizer.decode(outputs[0][len(inputs["input_ids"][0]):], skip_special_tokens=True)
     return generated_text
 
@@ -115,9 +121,75 @@ def generate_based_on_no_state(prompt, model, tokenizer, max_new_tokens=200):
     return generated_text
 
 
-def generate_based_on_new_state(prompt, model, tokenizer, max_new_tokens=200):
-    """Doesn't work with peft"""
-    pass
+def generate_json(prompt, input_text, previous_output, model, tokenizer, max_new_tokens=200, past_key_values=None):
+    """"""
+    # Initialize the prompt
+    prompt += f"input: {input_text}\noutput: {previous_output}"
+    new_output = '{\n    "annotation": [\n'
+    
+    # Function to generate until a specific character is found
+    def generate_until_char(model, tokenizer, prompt, stop_char, past_key_values=None):
+        inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+        
+        def custom_stopping_criteria(input_ids: torch.LongTensor, score: torch.FloatTensor, **kwargs) -> bool:
+            return stop_char in tokenizer.decode(input_ids[0][-1], skip_special_tokens=True)
+        stopping_criteria = StoppingCriteriaList([custom_stopping_criteria])
+        outputs = model.generate(**inputs, do_sample=False,
+                                 max_new_tokens=max_new_tokens,
+                                 stopping_criteria=stopping_criteria,
+                                 past_key_values=past_key_values,
+                                 return_dict_in_generate=True,
+                                 pad_token_id=tokenizer.pad_token_id,
+                                 output_scores=True)
+        generated_text = tokenizer.decode(outputs.sequences[0][len(inputs["input_ids"][0]):], skip_special_tokens=True)
+        past_key_values = outputs.past_key_values
+        return generated_text, past_key_values
+    
+    def check_next_token_is_comma(model, tokenizer, prompt, past_key_values=None):
+        inputs = tokenizer(prompt, return_tensors="pt").to("cuda")
+        # outputs = model(**inputs, past_key_values=past_key_values)
+        # logits = outputs.logits[:, -1, :]
+        # next_token_id = torch.argmax(logits, dim=-1).item()
+        outputs = model.generate(**inputs, do_sample=False, max_new_tokens=1,
+                                 past_key_values=past_key_values, pad_token_id=tokenizer.pad_token_id,
+                                 return_dict_in_generate=True, output_scores=True)
+        # xx = tokenizer.decode(outputs.sequences[0])
+        # print(xx)
+        next_token_str = tokenizer.decode(outputs.sequences[0][-1], skip_special_tokens=True)
+        return (len(next_token_str) > 0 and next_token_str[0] == ','), tokenizer.decode(outputs.sequences[0][-1], skip_special_tokens=False)
+    
+    ntstr = None  # TODO: Remove the ntstr variable
+    while True:
+        # Step 1: Write the initial part of the JSON element
+        new_output += '        {\n            "speaker": "'
+        prompt += '        {\n            "speaker": "'
+        try:
+            # Step 2: Generate until the next quote for speaker
+            generated_text, past_key_values = generate_until_char(model, tokenizer, prompt, '"', past_key_values)
+            speaker = generated_text.split('"')[0]
+            new_output += speaker + '",\n            "text": "'
+            prompt += speaker + '",\n            "text": "'
+            
+            # Step 3: Generate until the next quote for speech
+            generated_text, past_key_values = generate_until_char(model, tokenizer, prompt, '"', past_key_values)
+            text = generated_text.split('"')[0]
+            new_output += text + '"\n        }'
+            prompt += text + '"\n        }'
+            
+            # Step 4: Generate to check if there's a comma or end of list
+            is_comma, ntstr = check_next_token_is_comma(model, tokenizer, prompt, past_key_values)
+        except RuntimeError as e:
+            print(f"Runtime error in generative process. PROMPT:\n{prompt}")
+            print(f"\n_____________________________\nLAST_NEXT_TOKEN_STR_COMMA={ntstr}")
+            is_comma = False
+        if is_comma:
+            new_output += ',\n'
+            prompt += ',\n'
+        else:
+            new_output += '\n    ]\n}'
+            break
+    
+    return new_output, past_key_values
 
 
 def generate_genders(prompt, characters, model, tokenizer):
@@ -153,13 +225,3 @@ def get_sentences(text, sat_model="models/sat-3l-sm"):
     sat.half().to("cuda")
     sentences = sat.split(text)
     return sentences
-
-# prompt = 'User: How many people live in France?\nAssistant: '
-# inputs = tokenizer(prompt, return_tensors='pt').to("cuda")
-# output1 = model.generate(**inputs, max_new_tokens=1, return_dict_in_generate=True, cache_implementation=None, do_sample=False)
-# sequence = tokenizer.batch_decode(output1.sequences)[0]
-# print(sequence)
-# prompt = sequence + "7 million people live in France. \n<end_of_turn>\n User: And how many in Germany?\nAssistant: "
-# inputs = tokenizer(prompt, return_tensors='pt').to('cuda')
-# generation_output2 = model.generate(**inputs, past_key_values=output1.past_key_values, max_new_tokens=30, return_dict_in_generate=True, cache_implementation=None, do_sample=False)
-

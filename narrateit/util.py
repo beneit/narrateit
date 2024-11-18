@@ -1,3 +1,4 @@
+import codecs
 import re
 import json
 import os
@@ -23,6 +24,11 @@ def clean_annotations(annotations):
         else:
             _annotations[-1]['text'] += ' ' + annotation['text']
     return _annotations
+
+
+def annotate_without_llm(text):
+    result = {'annotation': [{'text': text, 'speaker': 'Narration'}], 'characters': {}}
+    return result
 
 
 def clean_string(s):
@@ -110,3 +116,15 @@ def old_create_dual_segments(sentences, min_segment_length, min_overlap_length):
             swap = not swap
     segments.append([idx_start, idx_end])
     return segments
+
+
+def read_file(file_path):
+    encodings = ['utf-8', 'utf-16', 'windows-1252', 'iso-8859-1']
+    for encoding in encodings:
+        try:
+            with codecs.open(file_path, 'r', encoding=encoding) as file:
+                content = file.read()
+            return content.replace('\r\n', '\n')  # Normalize line endings
+        except UnicodeError:
+            continue
+    raise ValueError(f"Unable to read the file with any of the encodings: {encodings}")

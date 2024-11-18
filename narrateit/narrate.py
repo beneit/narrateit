@@ -1,10 +1,7 @@
-import sys
 import os
 import time
 import re
 import json
-
-from .util import config, save_json
 
 
 def format_names(names, n_dialogue=None):
@@ -25,7 +22,10 @@ def format_names(names, n_dialogue=None):
 
 def handle_narration(characters):
     while True:
-        x = input(f"Do you want the text to be narrated by a specific character (y/n)?")
+        if len(characters) > 0:
+            x = input(f"Do you want the text to be narrated by an existing character (y/n)?")
+        else:
+            x = 'n'
         if x == 'y':
             names = list(characters.keys())
             print("Who?")
@@ -37,7 +37,7 @@ def handle_narration(characters):
                 else:
                     print("Invalid choice. Please select a valid number.")
         elif x == 'n':
-            narrator = {'name': 'nameless'}
+            narrator = {'name': 'Narrator'}
             while True:
                 gender = input(f"Do you want the text to be narrated by a male or female voice (m/f)?")
                 if gender in ['m', 'f']:
@@ -138,65 +138,71 @@ def get_context(annotations, i, max_context=800):
 
 
 def resolve_characters(document: dict):
+    if document.get('characters_resolved', False):
+        return document
     characters = document['characters']
     annotations = document['annotation']
     
-    # Step 1: Resolve genders
-    names = list(characters.keys())
-    print("Complete list of annotated characters (might contain dublicates), #dialogue:")
-    print(format_names(names, [characters[n]['n_dialogue'] for n in names]))
-    print("Please resolve the characters and information.")
-    print("Choose option 'n' if you know that this is a different name for another character")
-    print("Choose option 'y' if you want to keep this name for the character")
-    
-    for name in characters:
-        while True:
-            keep_character = input(
-                f"Character: {name}\nOptions: Keep this character (y), This is a duplicate character (n)\n")
-            if keep_character in ['y', 'n']:
-                characters[name]['keep'] = keep_character == 'y'
-                break
-            else:
-                print("Invalid input. Please enter 'y' or 'n'.")
-    
-    # Step 2: Resolve unknown characters in chronological order
-    print("Going through the document chronologically, please resolve the unknown characters.")
-    known_characters = [name for name in characters if characters[name]['keep']]
-    for i in range(len(annotations)):
-        character_name = annotations[i]['speaker']
-        if any(name == character_name and not characters[name]['keep'] for name in characters):
-            context = get_context(annotations, i)
-            print(f"Character: {character_name}\nContext: {context}")
+    n_narration = 0
+    if len(characters) > 0:
+        # Step 1: Resolve genders
+        names = list(characters.keys())
+        print("Complete list of annotated characters (might contain dublicates), #dialogue:")
+        print(format_names(names, [characters[n]['n_dialogue'] for n in names]))
+        print("Please resolve the characters and information.")
+        print("Choose option 'n' if you know that this is a different name for another character")
+        print("Choose option 'y' if you want to keep this name for the character")
+        
+        for name in characters:
             while True:
-                option = input("Options: [New character (n)], [Old character (already classified) (o)]\n")
-                if option == 'n':
-                    new_char = handle_new_character(character_name)
-                    if new_char['name'] not in list(characters.keys()):
-                        characters[new_char['name']] = new_char
-                        annotations[i]['speaker'] = new_char['name']
-                    else:
-                        print("Duplicate name found. Please choose a different name.")
-                    break
-                elif option == 'o':
-                    old_name, always_same = handle_old_character(character_name, known_characters)
-                    if always_same == 'y':
-                        for j in range(len(annotations)):
-                            if annotations[j]['speaker'] == character_name:
-                                if j < i:
-                                    print(f"An earlier instance of '{character_name}' has been found. Replacing all later instances by '{old_name}' but this is probably a mistake.")
-                                else:
-                                    annotations[j]['speaker'] = old_name
-                                    characters[old_name]['n_dialogue'] += 1
-                    else:
-                        annotations[i]['speaker'] = old_name
-                        characters[old_name]['n_dialogue'] += 1
+                keep_character = input(
+                    f"Character: {name}\nOptions: Keep this character (y), This is a duplicate character (n)\n")
+                if keep_character in ['y', 'n']:
+                    characters[name]['keep'] = keep_character == 'y'
                     break
                 else:
-                    print("Invalid input. Please enter 'n' or 'o'.")
+                    print("Invalid input. Please enter 'y' or 'n'.")
+        
+        # Step 2: Resolve unknown characters in chronological order
+        print("Going through the document chronologically, please resolve the unknown characters.")
+        known_characters = [name for name in characters if characters[name]['keep']]
+        for i in range(len(annotations)):
+            character_name = annotations[i]['speaker']
+            if any(name == character_name and not characters[name]['keep'] for name in characters):
+                context = get_context(annotations, i)
+                print(f"Character: {character_name}\nContext: {context}")
+                while True:
+                    option = input("Options: [New character (n)], [Old character (already classified) (o)]\n")
+                    if option == 'n':
+                        new_char = handle_new_character(character_name)
+                        if new_char['name'] not in list(characters.keys()):
+                            characters[new_char['name']] = new_char
+                            annotations[i]['speaker'] = new_char['name']
+                        else:
+                            print("Duplicate name found. Please choose a different name.")
+                        break
+                    elif option == 'o':
+                        old_name, always_same = handle_old_character(character_name, known_characters)
+                        if always_same == 'y':
+                            for j in range(len(annotations)):
+                                if annotations[j]['speaker'] == character_name:
+                                    if j < i:
+                                        print(f"An earlier instance of '{character_name}' has been found. Replacing all later instances by '{old_name}' but this is probably a mistake.")
+                                    else:
+                                        annotations[j]['speaker'] = old_name
+                                        characters[old_name]['n_dialogue'] += 1
+                        else:
+                            annotations[i]['speaker'] = old_name
+                            characters[old_name]['n_dialogue'] += 1
+                        break
+                    else:
+                        print("Invalid input. Please enter 'n' or 'o'.")
+            if character_name == 'Narration':
+                n_narration += 1
     
     # Step 3: Resolve Narration and create character dictionary
-    print("Please help resolve speaker characteristica for all characters")
-    time.sleep(1)
+    print("Please help resolve speaker characteristica for all characters and the narrator")
+    time.sleep(3)
     narration = document.get('narration_is_character', '?')
     names = list(characters.keys())
     for name in names:
@@ -208,16 +214,18 @@ def resolve_characters(document: dict):
             characters.pop(name)
     if narration == '?':
         narrator = handle_narration(characters)
+        narrator['n_dialogue'] = n_narration
     else:
         narrator = characters[narration]
+        narrator['n_dialogue'] += n_narration
     characters['Narration'] = narrator
     document['characters'] = characters
+    document['characters_resolved'] = True
     return document
 
 
 def merge_audio():
     from pydub import AudioSegment
-    from pydub.playback import play
     directory = os.path.join('output', 'waves')
     
     # Regular expression to match the file pattern
@@ -255,19 +263,14 @@ def merge_audio():
     
     return final_audio
 
+
 if __name__ == "__main__":
+    config = json.load(open(os.path.join('config', 'config.json')))
     # Make character descriptions
-    # file = config['annotation_file']
-    # with open(file, 'r', encoding='utf-8') as f:
-    #     document = json.load(f)
-    # document = resolve_characters(document)
-    # save_json(config['annotation_file'], document)
-    # for key in document['characters']:
-    #     print(f"{key}: {document['characters'][key]}")
-    # for i in range(len(document['annotation'])):
-    #     print(f"{document['annotation'][i]['speaker']}: {document['annotation'][i]['text']}\n")
-    
-    # Create sound files
-    file = config['annotation_file']
-    with open(file, 'r', encoding='utf-8') as f:
-        document = json.load(f)
+    with open(config['annotation_file'], 'r', encoding='utf-8') as f:
+        results = json.load(f)
+    results = resolve_characters(results)
+    for key in results['characters']:
+        print(f"{key}: {results['characters'][key]}")
+    for idx in range(len(results['annotation'])):
+        print(f"{results['annotation'][idx]['speaker']}: {results['annotation'][idx]['text']}\n")

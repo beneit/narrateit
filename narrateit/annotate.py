@@ -4,29 +4,18 @@ import codecs
 import json
 import time
 # from json_extractor import JsonExtractor
-from .util import write_to_file, clean_annotations, save_json, clean_string, config
-from .prompt_util import get_prompt, append_annotations, create_dual_segments
+from .util import write_to_file, clean_annotations, save_json, clean_string, config, read_file
+from .prompt_util import get_prompt, append_annotations, create_dual_segments, append_previous_annotations
 
 from tqdm import tqdm
 from .transformer_util import load_model_tokenizer, generate_genders, init_transformer_states, get_sentences
-from .transformer_util import generate_annotations as generate_text
+# from .transformer_util import generate_annotations as generate_text
 # from .transformer_util import generate_based_on_state as generate_text
+from .transformer_util import generate_json
 
 
 class BadLLMOutput(Exception):
     pass
-
-
-def read_file(file_path):
-    encodings = ['utf-8', 'utf-16', 'windows-1252', 'iso-8859-1']
-    for encoding in encodings:
-        try:
-            with codecs.open(file_path, 'r', encoding=encoding) as file:
-                content = file.read()
-            return content.replace('\r\n', '\n')  # Normalize line endings
-        except UnicodeError:
-            continue
-    raise ValueError(f"Unable to read the file with any of the encodings: {encodings}")
 
 
 def extract_characters(annotations):
@@ -49,31 +38,17 @@ def get_annotation(old_text, new_text, prompt, old_annotations, model, tokenizer
             print("Error in LLM output format, illegal json. Aborting...")
             raise BadLLMOutput(f"Bad LLM output: \n######{s}\n######")
     
-    def jsonify_llm(s, ann):
-        prefix = "{\"annotation\": ["
-        body = s
-        # if len(ann) == 0:
-        #     prefix += '{"speaker": "'
-        # elif s[0] == '"':
-        #     index = s.find("{")
-        #     if index == -1:
-        #         raise BadLLMOutput(f"Bad LLM output: \n######{s}\n######")
-        #     body = s[index:]
-        # else:
-        #     prefix += '{"speaker": "' + ann[-1]['speaker'] + '", "text": "'
-        prefix += '{"speaker": "'
-        return prefix + body
-    prompt_app = config['eos_token'] + "\n\nText: " + config['sot_token'] + old_text + new_text + config['eot_token']
-    prompt_app += "\noutput: {\n    \"annotation\": ["
-    prompt_app = append_annotations(prompt_app, old_annotations)
-    gen_text = generate_text(prompt + prompt_app, model, tokenizer, len(new_text) + 200)
-    write_to_file(f"inputs_plus_outputs_tmp/prompt_plus_generated_{int(time.time())}",
-                  prompt + prompt_app + gen_text)  # TODO: DELETE THIS
-    annotations = extract_from_text(jsonify_llm(gen_text, old_annotations))
+    previous_output = append_previous_annotations(old_annotations)
+    gen_json, _ = generate_json(prompt, old_text + new_text, previous_output, model, tokenizer, len(new_text) + 200)
+    in_and_out = prompt + "input: " + old_text + new_text + "\noutput: " + previous_output + gen_json[22:]
+    write_to_file(f"inputs_plus_outputs_tmp/prompt_plus_generated_{int(time.time())}", in_and_out)  # TODO: DELETE THIS
+    annotations = extract_from_text(gen_json)
     return annotations
 
 
-def annotate_with_llm(segments, model, tokenizer):
+def annotate_with_llm(segments, model, tokenizer, character_model=None):
+    if character_model is None:
+        character_model = model
     config['eot_token'] = ''  # TODO: Create special token
     config['sot_token'] = ''  # TODO: Create special token
     replacements = {"DOCUMENT_TYPE": config['document_type']}
@@ -132,14 +107,13 @@ def annotate_with_llm(segments, model, tokenizer):
         # print(last_characters)
         # print(last_genders)
         # print("$$$$$$$")
-        if i == 100:
+        if i == 50:
             break
     annotations = clean_annotations(annotations)
     characters = extract_characters(annotations)
     character_prompt = read_file(config['character_prompt'])
     characters = generate_genders(character_prompt, characters, model, tokenizer)
-    result = {'annotation': annotations, 'characters': characters}
-    save_json(config['annotation_file'], result)
+    result = {'annotation': annotations, 'characters': characters, 'characters_resolved': False}
     return result
 
 
@@ -174,13 +148,13 @@ def test_llm(model, tokenizer, examples):
     prompt = get_prompt(system_prompt, characters, last_characters, last_genders, replacements)
     # init_transformer_states(prompt[:-1], model, tokenizer)
     for i, s in tqdm(enumerate(texts)):
-        prompt_app = config['eos_token'] + "\n\nText: " + s
-        prompt_app += "\noutput: {\n    \"annotation\": ["
-        prompt_app += '\n        {\n            "speaker": "'
-        gen_text = generate_text(prompt + prompt_app, model, tokenizer, len(s) + 200)
-        write_to_file(f"inputs_plus_outputs_tmp/test_examples_{int(time.time())}", prompt + prompt_app + gen_text)
+        prompt_app = config['eos_token'] + "\n\n"
+        previous_output = "{\n    \"annotation\": [\n"
+        gen_json, _ = generate_json(prompt + prompt_app, s, previous_output, model, tokenizer, len(s) + 200)
+        in_and_out = prompt + prompt_app + "input: " + s + "\noutput: " + gen_json
+        write_to_file(f"inputs_plus_outputs_tmp/test_examples_{int(time.time())}", in_and_out)
         try:
-            annotation = extract_from_text('{"annotation": [{"speaker": "' + gen_text)
+            annotation = extract_from_text(gen_json)
         except BadLLMOutput as e:
             print(e)
             annotations.append([])
@@ -224,15 +198,6 @@ def compare_annotations(truth, generated):
     return success, words_correct
 
 
-def clear_llm():
-    global model
-    global tokenizer
-    del model
-    del tokenizer
-    import torch
-    torch.cuda.empty_cache()
-
-
 def test_prompt(model, tokenizer):
     # test with examples
     examples = json.load(open(os.path.join('prompts', 'test_examples.json')))
@@ -264,18 +229,27 @@ def helper_convert_list_to_annotations(file, output_file):
     save_json(output_file, result)
 
 
+def unload_llm():
+    global model
+    global tokenizer
+    del model
+    del tokenizer
+    import torch
+    torch.cuda.empty_cache()
+
+
 if __name__ == "__main__":
-    # document = clean_string(read_file(config['document']))
+    document = clean_string(read_file(config['document']))
     # sentences = re.split(r'(?<=[.!?])', document)
-    # sentences = get_sentences(document)
-    # segments = create_dual_segments(sentences, config['min_segment_length'], config['min_overlap_length'])
+    sentences = get_sentences(document)
+    segments = create_dual_segments(sentences, config['min_segment_length'], config['min_overlap_length'])
     
     model_path = config['annotation_model']
     model, tokenizer = load_model_tokenizer(model_path)
-    test_prompt(model, tokenizer)
+    # test_prompt(model, tokenizer)
     
     # annotate a text:
-    # result = annotate_with_llm(segments, model, tokenizer)
+    result = annotate_with_llm(segments, model, tokenizer)
     
     # load a peft model
     # from peft_util import load_peft_model
