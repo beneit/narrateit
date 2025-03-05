@@ -46,7 +46,7 @@ def save_json(filename, s):
         json.dump(s, json_file, indent=4, ensure_ascii=False)
 
 
-def get_text_from_pdf(filename):
+def get_text_from_pdf_old(filename):
     from pypdf import PdfReader
     reader = PdfReader(filename)
     num_pages = len(reader.pages)
@@ -54,6 +54,37 @@ def get_text_from_pdf(filename):
     for i in range(num_pages):
         page = reader.pages[i]
         text += page.extract_text()
+    return text
+
+
+def convert_pdf_to_txt(path):
+    from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+    from pdfminer.converter import TextConverter
+    from pdfminer.layout import LAParams
+    from pdfminer.pdfpage import PDFPage
+    from io import StringIO
+    rsrcmgr = PDFResourceManager()
+    retstr = StringIO()
+    codec = 'utf-8'
+    laparams = LAParams()
+    device = TextConverter(rsrcmgr, retstr, laparams=laparams)
+    fp = open(path, 'rb')
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+    password = ""
+    maxpages = 0
+    caching = True
+    pagenos = set()
+    
+    for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password, caching=caching,
+                                  check_extractable=True):
+        interpreter.process_page(page)
+    
+    text = retstr.getvalue()
+    text = text.replace('\f', '')
+    
+    fp.close()
+    device.close()
+    retstr.close()
     return text
 
 

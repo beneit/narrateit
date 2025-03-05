@@ -2,6 +2,7 @@ import os
 import time
 import re
 import json
+import glob
 
 
 def format_names(names, n_dialogue=None):
@@ -240,8 +241,6 @@ def merge_audio():
             second_number = int(match.group(2))
             files.append((first_number, second_number, filename))
     files.sort(key=lambda x: (x[0], x[1]))
-    # sorted_files = [[file[2] for file in files if file[0] == first_number] for first_number in
-    #                 sorted(set(file[0] for file in files))]
     
     # Merge audio files
     short_pause_duration, long_pause_duration = 500, 1000
@@ -260,6 +259,8 @@ def merge_audio():
         final_audio += audio
         previous_first_number = first_number
         previous_second_number = second_number
+        # Delete audio file
+        os.remove(os.path.join(directory, filename))
     
     return final_audio
 

@@ -2,7 +2,7 @@ import os
 import json
 import gc
 import argparse
-from narrateit.util import save_json, config, annotate_without_llm, read_file
+from narrateit.util import save_json, config, annotate_without_llm, read_file, convert_pdf_to_txt
 from narrateit.narrate import resolve_characters
 
 
@@ -24,7 +24,7 @@ def get_user_info(s):
 
 def annotate():
     from narrateit.annotate import clean_string
-
+    
     if not os.path.exists('output'):
         os.mkdir('output')
     # Create annotations
@@ -71,13 +71,31 @@ def narrate(annotations):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Process some data.')
-    parser.add_argument('--annotate', action='store_true', help='Run the annotate function')
-    parser.add_argument('--characters', action='store_true', help='Run the resolve_characters function')
-    parser.add_argument('--narrate', action='store_true', help='Run the narrate function')
-
+    parser = argparse.ArgumentParser(description='Convert text or pdf to an audiobook. In case of no arguments will run'
+                                                 ' complete narration according to the config file')
+    parser.add_argument('--convert_pdf', action='store_true', help='Convert a pdf to text file')
+    parser.add_argument('--annotate', action='store_true', help='Annotate according to what character or narration '
+                                                                'speaks which part of the text')
+    parser.add_argument('--characters', action='store_true', help='Resolve the annotated characters, correct '
+                                                                  'mistakes/remove dublicates')
+    parser.add_argument('--narrate', action='store_true', help='Generate the audio')
+    
     args = parser.parse_args()
     
+    # Convert to pdf
+    if args.convert_pdf:
+        path = input("Input path to pdf file:\n")
+        path = os.path.normpath(path)
+        text = convert_pdf_to_txt(path)
+        file_name = 'books' + os.path.sep + '.'.join(os.path.basename(path).split('.')[:-1]) + '.txt'
+        with open(file_name, "w", encoding="utf-8") as file:
+            file.write(text)
+        other_args = {k: v for k, v in vars(args).items() if k != 'convert_pdf'}
+        add_to_config = any(other_args.values()) or \
+            input(f"Text written to '{file_name}'. Add file to config.json [y/n]? ") == 'y'
+        if add_to_config:
+            config['document'] = file_name
+            save_json(os.path.join("config", "config.json"), config)
     # Only annotate
     if args.annotate:
         annotations = annotate()

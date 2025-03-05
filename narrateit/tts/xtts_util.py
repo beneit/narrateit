@@ -12,7 +12,7 @@ import warnings
 
 from narrateit.util import config
 
-voices = json.load(open(os.path.join('', 'XTTS-v2', 'samples', 'voices.json')))
+voices = json.load(open(os.path.join('tts', 'XTTS-v2', 'samples', 'voices.json')))
 device = "cuda" if torch.cuda.is_available() else "cpu"
 warnings.filterwarnings("ignore", category=UserWarning, module="pyloudnorm")
 
@@ -127,7 +127,7 @@ def create_wave_files(document, model, tts_config):
         else:
             text = [text]
         wave_number_2 = 0
-        for prompt in text:
+        for prompt in tqdm(text):
             output_file = os.path.join('output', 'waves', f'out_{wave_number_1:04}_{wave_number_2:02}.wav')
             # # skip the actual synthesis for now if the file already exists # TODO delete this
             # if not os.path.isfile(output_file):
@@ -142,8 +142,9 @@ def create_wave_files(document, model, tts_config):
 if __name__ == "__main__":
     model, tts_config = load_tts('tts/XTTS-v2')
     speaker = "tts/XTTS-v2/samples/LJ001-0026.wav"
-    prompt = "The quick brown fox jumps over the lazy dog! This sentence contains every letter of the alphabet, making it ideal for testing pronunciation and clarity."
-    # for voice in voices:
-    #     speaker_wav = voice["sample"]
-    #     output = os.path.join("output", "waves", "temp", os.path.split(speaker_wav)[1])
-    #     create_wave(prompt, model, tts_config, speaker_wav, output_file=output)
+    # prompt = "The quick brown fox jumps over the lazy dog! This sentence contains every letter of the alphabet, making it ideal for testing pronunciation and clarity."
+    prompt = 'I never said HE stole the money!'
+    for voice in tqdm(voices):
+        speaker_wav = voice["sample"]
+        output = os.path.join("output", "waves", "temp", os.path.split(speaker_wav)[1])
+        create_wave(prompt, model, tts_config, speaker_wav, output_file=output)
