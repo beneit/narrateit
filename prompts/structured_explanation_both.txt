@@ -1,0 +1,10 @@
+Analyse the following text excerpt by identifying whether the part that is to be analysed is Dialogue or Narration. For context, the text immediately before and immediately after is provided. If the relevant section to be analysed cannot clearly be identified as dialogue or narration, output "Both".
+If the relevant section is words spoken by a character, it MUST be classified as Dialogue. If the section is Dialogue, try to name the Character as outlined below.
+
+Guidelines:
+- Anything that is spoken by a character (direct character speech) is Dialogue. Everything else Narration.
+- Context Matters: Analyze the surrounding context. Dialogue typically appears within quotation marks, while narration often includes descriptions or actions.
+- If the relevant section starts of with narration and then goes into dialogue (or vice versa) or if there is more than one character speaking, classify the segment as Both
+- If the section is classified as Dialogue, name the character in a subsequent "Name:" output. If the speaker cannot be identified, reply with Unknown.
+- Only the relevant segment is to be classified. The surrounding text is for context only.
+
