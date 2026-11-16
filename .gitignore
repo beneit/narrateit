@@ -1,0 +1,23 @@
+# PyCharm
+.idea/
+
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# Additionally
+config/*
+!config/config.json
+datasets/
+inputs_plus_outputs_tmp/
+inputs_tmp/
+output/
+peft_model/
+prompts/*
+!prompts/structured_explanation_single.txt
+!prompts/structured_explanation_both.txt
+test_llm_output/

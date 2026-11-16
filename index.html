@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>NarrateIt — Demo</title>
+<style>
+/* ── §8 Tokens ─────────────────────────────────────────────── */
+:root {
+  --bg: #f7f4ef; --surface: #ffffff; --ink: #1b1a17; --muted: #6b6760;
+  --border: #e3ddd3; --accent: #a63d2f; --info-bg: #eef1f6; --info-line: #5b7291;
+  --neutral-bg: #ebe8e3; --neutral-ink: #4a4741; --dot-l: 52%;
+  --chip-s: 58%; --chip-l: 92%; --chip-ts: 62%; --chip-tl: 28%;
+  --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius: 10px; --pad: 24px; --player-h: 0px;
+  --shadow: 0 1px 2px rgb(0 0 0 / .04), 0 2px 8px rgb(0 0 0 / .04);
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131210; --surface: #1c1a17; --ink: #ece8e0; --muted: #9a948a;
+    --border: #2e2b26; --accent: #e0765f; --info-bg: #1b1f27; --info-line: #6d87a8;
+    --neutral-bg: #2a2824; --neutral-ink: #c9c3b8; --dot-l: 62%;
+    --chip-s: 34%; --chip-l: 20%; --chip-ts: 60%; --chip-tl: 76%;
+    --shadow: none;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 0.9375rem/1.45 var(--sans);
+}
+[hidden] { display: none !important; }
+.vh { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+button, select, input { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 var(--pad); }
+.region { margin-top: 20px; }
+.region-title { font-size: .8125rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.reveal { animation: rise 150ms ease-out both; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── A · Header ────────────────────────────────────────────── */
+.site-head { padding: 40px 0 4px; }
+.wordmark { font: 600 2.25rem/1.1 var(--serif); margin: 0; letter-spacing: -.01em; }
+.wordmark em { font-style: italic; color: var(--accent); }
+.sub { margin: 6px 0 0; color: var(--muted); }
+
+/* ── B · Banner ────────────────────────────────────────────── */
+.banner {
+  display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: flex-start; justify-content: space-between;
+  background: var(--info-bg); border-left: 3px solid var(--info-line); border-radius: 6px; padding: 12px 16px;
+}
+.banner-msg { display: flex; gap: 10px; flex: 1 1 420px; }
+.banner-msg svg { flex: none; margin-top: 2px; color: var(--info-line); }
+.banner p { margin: 0; }
+.banner details { display: inline; }
+.banner summary { display: inline; cursor: pointer; color: var(--info-line); text-decoration: underline; text-underline-offset: 2px; }
+.banner summary::-webkit-details-marker { display: none; }
+.banner details[open] > p { margin-top: 6px; color: var(--muted); }
+.pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--border); font-size: .8125rem; white-space: nowrap; color: var(--muted);
+}
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #9a958c; }
+.pill[data-v="online"]::before { background: #3f9a5b; }
+.pill[data-v="loading"]::before { background: #c79a2c; }
+
+/* ── C · Picker ────────────────────────────────────────────── */
+.picker { border: 0; padding: 0; margin: 0; min-width: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 8px; }
+.card { position: relative; display: block; padding: 14px 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s; }
+.card input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); }
+.card:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.card:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+.card:has(input:disabled) { cursor: not-allowed; }
+.card:has(input:disabled:not(:checked)) { opacity: .6; }
+.card-title { font: 600 1.0625rem/1.3 var(--serif); margin: 0 0 4px; }
+.card-blurb { margin: 0 0 8px; }
+.card-credit { margin: 0; font-size: .75rem; color: var(--muted); }
+.card-err { margin: 8px 0 0; font-size: .8125rem; color: var(--accent); }
+.skel { background: linear-gradient(90deg, var(--border) 0, color-mix(in srgb, var(--border) 40%, transparent) 50%, var(--border) 100%) 0 0 / 200% 100%; animation: shimmer 1.2s linear infinite; border-radius: 6px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+.skel-card { height: 104px; }
+
+/* ── D · Input ─────────────────────────────────────────────── */
+.pane-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.pane-head .spacer { flex: 1; }
+.wc { color: var(--muted); font-size: .8125rem; }
+.wc.over { color: var(--accent); font-weight: 600; }
+.hint { color: var(--muted); font-size: .8125rem; }
+.input-text {
+  display: block; width: 100%; border: 0; background: transparent; padding: 16px 18px; border-radius: 0 0 var(--radius) var(--radius);
+  font: 1.0625rem/1.65 var(--serif); color: var(--ink);
+  height: 22rem; min-height: 14rem; max-height: 60vh; overflow-y: auto; resize: vertical;
+}
+.input-text:focus-visible { outline-offset: -2px; }
+.input-text.skel { color: transparent; }
+.limit-msg { margin: 8px 2px 0; color: var(--accent); font-size: .875rem; }
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  border: 1px solid transparent; border-radius: 8px; padding: 10px 20px; font-weight: 600; cursor: pointer;
+  background: var(--accent); color: #fff; min-height: 44px; transition: filter .15s, background .15s;
+}
+@media (prefers-color-scheme: dark) { .btn { color: #1b1a17; } }
+.btn:hover:not(:disabled) { filter: brightness(1.07); }
+.btn.secondary { background: var(--surface); color: var(--ink); border-color: var(--border); font-weight: 500; }
+.btn.small { padding: 5px 12px; min-height: 32px; font-size: .8125rem; font-weight: 500; }
+.btn:disabled, .ctl:disabled { opacity: .6; cursor: not-allowed; }
+.iconbtn {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; padding: 0;
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--ink);
+}
+.iconbtn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Demo lock: one class + one shared handler (§7). The overlay catches clicks
+   that a natively disabled control would swallow. */
+.lock { position: relative; display: inline-flex; vertical-align: middle; }
+.lock::after { content: ""; position: absolute; inset: 0; cursor: not-allowed; }
+.shake { animation: shake 200ms ease-in-out; }
+@keyframes shake { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* ── E / I · Action rows + progress ────────────────────────── */
+.action { display: flex; align-items: center; gap: 14px; min-height: 48px; flex-wrap: wrap; }
+.action .note { color: var(--muted); font-size: .8125rem; }
+.prog { flex: 1 1 100%; display: flex; align-items: center; gap: 14px; cursor: pointer; min-height: 44px; }
+.prog-track { flex: 1; height: 8px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.prog-fill { height: 100%; width: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+.prog-label { flex: 0 0 auto; min-width: 15em; color: var(--muted); font-size: .875rem; }
+.prog-skip { font-size: .75rem; color: var(--muted); text-decoration: underline; }
+
+.err-card { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); border-radius: var(--radius); padding: 12px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.err-card p { margin: 0; flex: 1 1 260px; }
+.err-card code { font-size: .8125rem; }
+
+[aria-busy="true"] { opacity: .55; transition: opacity .2s; }
+
+/* ── F · Stats ─────────────────────────────────────────────── */
+.stats { display: flex; flex-wrap: wrap; gap: 12px; }
+.tile { flex: 1 1 150px; padding: 12px 16px; }
+.tile dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tile dd { margin: 2px 0 0; font-size: 1.375rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile dd small { font-size: .8125rem; font-weight: 400; color: var(--muted); }
+
+/* ── G · Character sheet ───────────────────────────────────── */
+.sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; flex-wrap: wrap; }
+.table-wrap { max-height: 28rem; overflow: auto; }
+table.cast { width: 100%; border-collapse: collapse; }
+.cast th, .cast td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.cast tbody tr:last-child > * { border-bottom: 0; }
+.cast thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); font-size: .75rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+.cast .r { text-align: right; }
+.cast .c-name { font-weight: 600; white-space: nowrap; }
+.cast .c-act { width: 1%; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; background: hsl(var(--h, 0) 55% var(--dot-l)); vertical-align: 0; }
+.dot.is-narr { background: var(--muted); }
+.sub-gender { display: none; font-weight: 400; font-size: .8125rem; color: var(--muted); margin-left: 18px; }
+.ctl { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); padding: 5px 8px; min-height: 32px; }
+.ctl-age { width: 4.5rem; text-align: right; font-variant-numeric: tabular-nums; }
+.voice-cell { display: flex; align-items: center; gap: 6px; }
+.pv { position: relative; overflow: hidden; }
+.pv .pv-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 40%; background: var(--accent); display: none; animation: indet 0.9s linear infinite; }
+.pv[data-state="loading"] .pv-bar { display: block; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+.pop { position: absolute; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 8px 24px rgb(0 0 0 / .14); padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* ── H · Transcript ────────────────────────────────────────── */
+.switch { display: inline-flex; align-items: center; gap: 8px; font-size: .8125rem; color: var(--muted); cursor: pointer; }
+.switch input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.t-wrap { position: relative; }
+.t-wrap::before, .t-wrap::after { content: ""; position: absolute; left: 1px; right: 12px; height: 28px; pointer-events: none; opacity: 0; transition: opacity .15s; z-index: 1; }
+.t-wrap::before { top: 1px; border-radius: var(--radius) var(--radius) 0 0; background: linear-gradient(var(--surface), transparent); }
+.t-wrap::after { bottom: 1px; border-radius: 0 0 var(--radius) var(--radius); background: linear-gradient(transparent, var(--surface)); }
+.t-wrap.fade-top::before, .t-wrap.fade-bottom::after { opacity: 1; }
+.t-scroll { position: relative; max-height: 32rem; overflow-y: auto; padding: 8px 0 calc(24px + var(--player-h)); overscroll-behavior: contain; }
+.t-list { list-style: none; margin: 0; padding: 0; }
+.t-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 14px; padding: 8px 16px 8px 13px; border-left: 3px solid transparent; }
+.t-row:hover { background: color-mix(in srgb, var(--ink) 3.5%, transparent); }
+.t-row[role="button"] { cursor: pointer; }
+.t-row.is-active { border-left-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.t-spk { padding-top: 2px; min-width: 0; }
+.chip {
+  display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 2px 9px; border-radius: 999px; font-size: .8125rem; font-weight: 600;
+  background: hsl(var(--h, 0) var(--chip-s) var(--chip-l)); color: hsl(var(--h, 0) var(--chip-ts) var(--chip-tl));
+}
+.chip.is-narr { background: var(--neutral-bg); color: var(--neutral-ink); }
+.t-text { font: 1.0625rem/1.65 var(--serif); margin: 0; overflow-wrap: anywhere; }
+.t-act { visibility: hidden; display: flex; gap: 4px; }
+.t-row:hover .t-act:not([hidden]) { visibility: visible; }
+.t-empty { padding: 24px 16px; color: var(--muted); text-align: center; }
+.t-sentinel { height: 1px; }
+
+/* ── J · Player ────────────────────────────────────────────── */
+.player {
+  position: sticky; bottom: 0; z-index: 10; margin: 24px calc(-1 * var(--pad)) 0;
+  padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border);
+}
+.player audio[controls] { width: 100%; }
+.pl { display: flex; align-items: center; gap: 12px; position: relative; }
+.pl-play { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; border: 0; }
+@media (prefers-color-scheme: dark) { .pl-play { color: #1b1a17; } }
+.pl-time { font-size: .8125rem; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 3.2em; text-align: center; }
+.pl-seek { flex: 1; min-width: 60px; accent-color: var(--accent); }
+.pl-extra { display: flex; gap: 8px; align-items: center; }
+.pl-speed { min-width: 3.4em; width: auto; padding: 0 8px; font-variant-numeric: tabular-nums; font-size: .8125rem; }
+.pl-more { display: none; }
+a.iconbtn { text-decoration: none; }
+/* Error-only player: an inline card, not a pinned bar. */
+.player.err-only { position: static; margin: 20px 0 0; padding: 0; background: none; border: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ── Toast ─────────────────────────────────────────────────── */
+.toast {
+  position: fixed; left: 50%; bottom: calc(24px + var(--player-h) + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; box-shadow: 0 6px 20px rgb(0 0 0 / .2);
+  display: flex; gap: 14px; align-items: center; max-width: calc(100vw - 32px); font-size: .875rem;
+  animation: rise 150ms ease-out;
+}
+.toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; padding: 0; }
+
+/* Fatal */
+.fatal { margin-top: 20px; }
+
+footer.foot { padding: 32px 0 24px; color: var(--muted); font-size: .75rem; }
+
+/* ── §8 Responsive ─────────────────────────────────────────── */
+@media (max-width: 979px) {
+  :root { --pad: 16px; }
+  .tile { flex-basis: 30%; }
+  .t-row { grid-template-columns: 120px 1fr auto; }
+  .input-text, .t-scroll { max-height: 60vh; }
+}
+@media (max-height: 700px) { .t-scroll { max-height: 60vh; } }
+@media (max-width: 639px) {
+  .cards { grid-template-columns: 1fr; }
+  .cast .c-gender { display: none; }
+  .cast th, .cast td { padding: 8px 6px; }
+  .ctl-age { width: 3.5rem; }
+  .sub-gender { display: block; }
+  .t-row { grid-template-columns: 1fr auto; gap: 4px; }
+  .t-spk { grid-column: 1 / -1; }
+  .prog-label { min-width: 0; flex: 1 1 100%; }
+  .pl-more { display: inline-grid; }
+  .pl-extra { display: none; position: absolute; right: 0; bottom: calc(100% + 10px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / .14); }
+  .pl-extra.open { display: flex; }
+}
+
+/* ── Motion guard ──────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+
+  <!-- A · Header -->
+  <header class="site-head">
+    <h1 class="wordmark">Narrate<em>It</em></h1>
+    <p class="sub">Narrate your book with a voice for every character.</p>
+  </header>
+
+  <!-- B · Demo banner -->
+  <section class="banner region" id="banner" aria-label="Demo mode">
+    <div class="banner-msg">
+      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="9.2" y="8.5" width="1.6" height="6" rx=".8" fill="currentColor"/><circle cx="10" cy="6" r="1" fill="currentColor"/></svg>
+      <div>
+        <p><strong>Demo mode.</strong> Everything below is real output from a real pipeline run, loaded from disk. Live annotation and synthesis are offline on this host, so editing and your own text are disabled.
+        <details><summary>Why?</summary><p>The annotation and speech models need a GPU, which this host does not have. Both run in the full version, and the interface shown here is the same one.</p></details></p>
+      </div>
+    </div>
+    <div class="pills" id="pills">
+      <span class="pill" id="pill-annotator">Annotation model · …</span>
+      <span class="pill" id="pill-tts">Speech synthesis · …</span>
+    </div>
+  </section>
+
+  <!-- Full-page error (manifest) -->
+  <div class="fatal" id="fatal" hidden></div>
+
+  <!-- C · Sample picker -->
+  <section class="region" id="region-picker">
+    <fieldset class="picker" id="picker">
+      <legend class="region-title">Choose a sample</legend>
+      <div class="cards" id="cards"><div class="skel skel-card"></div></div>
+    </fieldset>
+  </section>
+
+  <!-- D · Input text -->
+  <section class="region panel" id="region-input" aria-labelledby="input-label">
+    <div class="pane-head">
+      <h2 class="region-title" id="input-label">Input text</h2>
+      <span class="wc num" id="wc" aria-live="polite">— words</span>
+      <span class="spacer"></span>
+      <span class="hint">Editing disabled in demo</span>
+      <span id="upload-slot"><button class="btn secondary small" type="button" id="btn-upload">Upload .txt</button></span>
+    </div>
+    <textarea class="input-text skel" id="input-text" readonly aria-labelledby="input-label" spellcheck="false"></textarea>
+  </section>
+  <p class="limit-msg" id="limit-msg" role="alert" hidden></p>
+
+  <!-- E · Analyze -->
+  <section class="region action" id="region-analyze">
+    <button class="btn" type="button" id="btn-analyze" disabled>Analyze Text</button>
+    <div class="prog" id="prog-analyze" role="button" tabindex="0" title="Skip to the result" hidden>
+      <div class="prog-track" aria-hidden="true"><div class="prog-fill"></div></div>
+      <span class="prog-label" aria-live="polite"></span>
+      <span class="prog-skip" aria-hidden="true">Skip</span>
+    </div>
+  </section>
+  <div class="region" id="analyze-error" hidden></div>
+
+  <div id="results">
+    <!-- F · Stats -->
+    <section class="region" id="region-stats" aria-label="Statistics" hidden>
+      <dl class="stats" id="stats"></dl>
+    </section>
+
+    <!-- G · Character sheet -->
+    <section class="region" id="region-cast" aria-labelledby="cast-title" hidden>
+      <div class="sec-head"><h2 class="region-title" id="cast-title">Characters &amp; voices</h2></div>
+      <div class="panel table-wrap">
+        <table class="cast">
+          <thead><tr>
+            <th scope="col">Character</th>
+            <th scope="col" class="c-gender">Gender</th>
+            <th scope="col" class="r">Age</th>
+            <th scope="col" class="r">Lines</th>
+            <th scope="col">Voice</th>
+            <th scope="col" class="c-act"><span class="vh">Actions</span></th>
+          </tr></thead>
+          <tbody id="cast-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- H · Transcript -->
+    <section class="region" id="region-transcript" aria-labelledby="t-title" hidden>
+      <div class="sec-head">
+        <h2 class="region-title" id="t-title">Annotated transcript</h2>
+        <label class="switch" id="follow-wrap" hidden><input type="checkbox" id="follow" checked> Follow along</label>
+      </div>
+      <div class="panel t-wrap" id="t-wrap">
+        <div class="t-scroll" id="t-scroll" tabindex="0" aria-labelledby="t-title">
+          <ol class="t-list" id="t-list"></ol>
+          <div class="t-sentinel" id="t-sentinel"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- I · Generate -->
+    <section class="region action" id="region-synth" hidden>
+      <button class="btn" type="button" id="btn-synth" title="Analyze the text first" disabled>Generate Audiobook</button>
+      <div class="prog" id="prog-synth" role="button" tabindex="0" title="Skip to the result" hidden>
+        <div class="prog-track" aria-hidden="true"><div class="prog-fill"></div></div>
+        <span class="prog-label" aria-live="polite"></span>
+        <span class="prog-skip" aria-hidden="true">Skip</span>
+      </div>
+    </section>
+  </div>
+
+  <!-- J · Player -->
+  <section class="player" id="region-player" aria-label="Audiobook player" hidden>
+    <audio id="audio" preload="none" controls></audio>
+    <div class="pl" id="pl" hidden>
+      <button class="iconbtn pl-play" type="button" id="pl-play" aria-label="Play">
+        <svg id="ico-play" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>
+        <svg id="ico-pause" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" hidden><rect x="3.5" y="2.5" width="3" height="11" rx="1" fill="currentColor"/><rect x="9.5" y="2.5" width="3" height="11" rx="1" fill="currentColor"/></svg>
+      </button>
+      <span class="pl-time" id="pl-cur">0:00</span>
+      <input class="pl-seek" type="range" id="pl-seek" min="0" max="0" step="0.1" value="0" aria-label="Seek">
+      <span class="pl-time" id="pl-dur">0:00</span>
+      <div class="pl-extra" id="pl-extra">
+        <button class="iconbtn pl-speed" type="button" id="pl-speed" aria-label="Playback speed 1×">1×</button>
+        <a class="iconbtn" id="pl-dl" download aria-label="Download MP3" title="Download MP3">
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </div>
+      <button class="iconbtn pl-more" type="button" id="pl-more" aria-label="More player options" aria-expanded="false" aria-controls="pl-extra">⋯</button>
+    </div>
+    <div class="err-card" id="pl-error" hidden></div>
+  </section>
+
+  <footer class="foot">NarrateIt demo · static build · no data leaves this page</footer>
+</main>
+
+<div id="toast-host" aria-live="polite"></div>
+
+<!-- Merge popover (§5). One instance, anchored to the row on open. -->
+<div class="pop" id="merge-pop" role="dialog" aria-label="Merge character" hidden>
+  <span>Merge <strong id="merge-src"></strong> into</span>
+  <select class="ctl" id="merge-target" aria-label="Merge target"></select>
+  <button class="btn secondary small" type="button" id="merge-cancel">Cancel</button>
+  <button class="btn small" type="button" id="merge-ok">Merge</button>
+</div>
+
+<script>
+'use strict';
+
+/* ════════════════════════════════════════════════════════════════
+   CONFIG / FEATURES
+   ════════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  MANIFEST: 'web_samples/manifest.json',
+  MAX_WORDS: 6000,
+  MAX_CHARS: 45000,
+  MAX_SAMPLES: 5,
+  HUES: [8, 32, 190, 148, 262, 330, 212, 98, 288, 352],
+  WPM: 150,
+  CHUNK: 200,                 // transcript rows per append
+  ANALYZE_MS: 2400,
+  SYNTH_MS: 2800,
+  SPEEDS: [0.75, 1, 1.25, 1.5],
+  TOAST_MS: 3000,
+  TOAST_RATE_MS: 10000,
+  UNDO_MS: 10000,
+};
+// merge: step 7 of the build plan. The algorithm is implemented; flip to true to exercise it.
+const FEATURES = { edit: false, timingSync: true, voicePreviews: true, merge: false };
+const API_MODE = 'demo';      // 'demo' | 'live'
+const NARRATION_KEYS = ['Narration', 'Narrator', 'narration', 'NARRATION'];
+const DEMO_TITLE = 'Disabled in demo mode — this works in the live version';
+
+const ANALYZE_STAGES = ['segmenting', 'attributing_speakers', 'profiling_characters', 'casting_voices'];
+const SYNTH_STAGES = ['preparing', 'loading_voices', 'synthesizing', 'encoding'];
+const STAGE_LABELS = {
+  segmenting: 'Segmenting text…',
+  attributing_speakers: 'Attributing speakers…',
+  profiling_characters: 'Profiling characters…',
+  casting_voices: 'Casting voices…',
+  preparing: 'Preparing lines…',
+  loading_voices: 'Loading voice models…',
+  synthesizing: 'Synthesising {name}…',
+  encoding: 'Mastering and encoding MP3…',
+  loading_audio: 'Loading audio…',
+};
+
+/* ════════════════════════════════════════════════════════════════
+   Helpers · palette · voices
+   ════════════════════════════════════════════════════════════════ */
+const $ = (sel, root = document) => root.querySelector(sel);
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const countWords = t => (String(t).match(/\S+/g) || []).length;
+const nf = new Intl.NumberFormat('en');
+const GENDER_LABEL = { f: 'Female', m: 'Male' };
+const genderLabel = g => GENDER_LABEL[g] ?? (g == null || g === '' ? '—' : String(g));
+
+function h(tag, attrs = {}, ...kids) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'value') n.value = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : String(c));
+  return n;
+}
+
+function fmtTime(sec) {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
+  sec = Math.round(sec);
+  const hh = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, s = sec % 60;
+  return (hh ? `${hh}:${String(m).padStart(2, '0')}` : `${m}`) + `:${String(s).padStart(2, '0')}`;
+}
+
+/** Hue for the n-th non-narrator in the ordered cast. Wraps; never throws. */
+const hueAt = n => CONFIG.HUES[((n % CONFIG.HUES.length) + CONFIG.HUES.length) % CONFIG.HUES.length];
+
+/** Voice catalogue grouped for <optgroup>. */
+function voiceGroups(voices) {
+  const groups = new Map([['Female', []], ['Male', []]]);
+  for (const v of voices) {
+    const g = GENDER_LABEL[v.gender] || 'Other';
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(v);
+  }
+  return [...groups].filter(([, vs]) => vs.length);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   API adapter (§2) — DemoApi · LiveApi · api
+   Both take (input, { onStage, sample, ctl }).
+   onStage(name, fraction, detail?) · ctl.skip = true ends staging early.
+   `sample` is only read by DemoApi; LiveApi ignores it.
+   ════════════════════════════════════════════════════════════════ */
+const jsonCache = new Map();
+async function getJSON(url) {
+  if (!jsonCache.has(url)) {
+    const p = fetch(url).then(async r => {
+      if (!r.ok) throw new Error(`${url} returned ${r.status} ${r.statusText}`.trim());
+      try { return await r.json(); } catch { throw new Error(`${url} is not valid JSON`); }
+    });
+    jsonCache.set(url, p);
+    p.catch(() => jsonCache.delete(url));
+  }
+  return jsonCache.get(url);
+}
+
+/** Single timer driving staged progress. Resolves when finished or skipped. */
+function runStages(stages, totalMs, onStage, ctl = {}, detailFor = null) {
+  return new Promise(resolve => {
+    if (reducedMotion()) { onStage(stages.at(-1), 1); return resolve(); }
+    const t0 = performance.now();
+    const tick = () => {
+      const f = ctl.skip ? 1 : Math.min(1, (performance.now() - t0) / totalMs);
+      const idx = Math.min(stages.length - 1, Math.floor(f * stages.length));
+      const local = f * stages.length - idx;
+      onStage(stages[idx], f, detailFor ? detailFor(stages[idx], local) : undefined);
+      if (f >= 1) return resolve();
+      setTimeout(tick, 40);
+    };
+    tick();
+  });
+}
+
+const DemoApi = {
+  async status() { return { annotator: 'offline', tts: 'offline' }; },
+
+  async analyze(text, { onStage, sample, ctl = {} }) {
+    const data = getJSON(sample.annotation);
+    data.catch(() => { ctl.skip = true; });
+    const [out] = await Promise.all([data, runStages(ANALYZE_STAGES, CONFIG.ANALYZE_MS, onStage, ctl)]);
+    if (!out || !Array.isArray(out.annotation) || typeof out.characters !== 'object' || !out.characters)
+      throw new Error(`${sample.annotation} is malformed: expected "annotation" (array) and "characters" (object)`);
+    return out;
+  },
+
+  async synthesize(payload, { onStage, sample, ctl = {} }) {
+    const names = Object.values(payload.characters).map(c => c.name);
+    const detail = (stage, local) =>
+      stage === 'synthesizing' && names.length ? names[Math.min(names.length - 1, Math.floor(local * names.length))] : undefined;
+    await runStages(SYNTH_STAGES, CONFIG.SYNTH_MS, onStage, ctl, detail);
+    return { audioUrl: sample.audio, durationSec: null };
+  },
+};
+
+/** Stub against the §10 contract. Unused while API_MODE === 'demo'. */
+const LiveApi = {
+  async status() {
+    const r = await fetch('/api/status');
+    if (!r.ok) throw new Error(`/api/status returned ${r.status}`);
+    const s = await r.json();
+    if (Number.isFinite(s.max_words)) CONFIG.MAX_WORDS = s.max_words;
+    return s;
+  },
+  async analyze(text, { onStage, ctl = {} }) {
+    const { job_id } = await LiveApi._post('/api/analyze', { text });
+    return LiveApi._poll(job_id, onStage, ctl);
+  },
+  async synthesize(payload, { onStage, ctl = {} }) {
+    const { job_id } = await LiveApi._post('/api/synthesize', payload);
+    const r = await LiveApi._poll(job_id, onStage, ctl);
+    return { audioUrl: r.audio_url, durationSec: r.duration_sec ?? null, timings: r.timings_included };
+  },
+  async _post(url, body) {
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 400 && j.error === 'too_long')
+      throw new Error(`This text is too long: ${nf.format(j.got)} words, limit ${nf.format(j.max_words)}.`);
+    if (!r.ok) throw new Error(`${url} returned ${r.status}`);
+    return j;
+  },
+  async _poll(id, onStage, ctl) {
+    for (;;) {
+      const r = await fetch(`/api/jobs/${encodeURIComponent(id)}`);
+      if (!r.ok) throw new Error(`Job ${id} returned ${r.status}`);
+      const j = await r.json();
+      if (j.stage) onStage(j.stage, j.progress ?? 0);
+      if (j.state === 'done') return j.result;
+      if (j.state === 'error') throw new Error(j.error?.message || `Job ${id} failed`);
+      await new Promise(res => setTimeout(res, 1000));
+    }
+  },
+};
+
+const api = API_MODE === 'live' ? LiveApi : DemoApi;
+
+/* ════════════════════════════════════════════════════════════════
+   normalise() (§3, §4) — the only structure render functions see
+   ════════════════════════════════════════════════════════════════ */
+function normalise(output, voices) {
+  const chars = output.characters || {};
+  const lines = [];
+  const counts = new Map();
+
+  output.annotation.forEach((a, srcIndex) => {
+    const text = typeof a?.text === 'string' ? a.text.trim() : '';
+    if (!text) return;                                     // dropped before indexing
+    const key = String(a.speaker ?? '');
+    lines.push({ i: lines.length, srcIndex, key, text, words: countWords(text) });
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+
+  const keys = new Set([...Object.keys(chars), ...counts.keys()]);
+  const cast = [...keys].map(key => {
+    const c = chars[key];
+    if (!c) console.warn(`[narrateit] speaker "${key}" has no entry in characters; using the key as its name`);
+    else if (!c.name) console.warn(`[narrateit] character "${key}" has no name; using the key`);
+    const n = counts.get(key) || 0;
+    if (c && Number.isFinite(c.n_dialogue) && c.n_dialogue !== n)
+      console.warn(`[narrateit] "${key}": n_dialogue is ${c.n_dialogue} but annotation has ${n} segments; using ${n}`);
+    return {
+      key, name: c?.name || key, gender: c?.gender ?? null, age: c?.age ?? null,
+      lines: n, voice: c?.voice ?? null, isNarration: NARRATION_KEYS.includes(key), hue: null,
+    };
+  });
+
+  // Voices missing from the catalogue are appended so the <select> never shows blank.
+  for (const c of cast) {
+    if (c.voice && !voices.some(v => v.id === c.voice)) {
+      console.warn(`[narrateit] voice "${c.voice}" (used by ${c.name}) is not in the catalogue; appending it`);
+      voices.push({ id: c.voice, label: c.voice, gender: null, preview: null });
+    }
+  }
+
+  const model = { lines, cast, stats: null, hasTimings: false, audioDuration: null };
+  orderCast(model);
+
+  // §4 timing resolution: absolute start/end if every entry has them, else accumulated duration, else off.
+  const src = output.annotation;
+  const allAbs = lines.length > 0 && lines.every(l => Number.isFinite(src[l.srcIndex].start) && Number.isFinite(src[l.srcIndex].end));
+  let t = Number(output.audio?.lead_silence) || 0, ok = lines.length > 0;
+  for (const ln of lines) {
+    const a = src[ln.srcIndex];
+    if (allAbs) { ln.start = a.start; ln.end = a.end; }
+    else if (Number.isFinite(a.duration)) { ln.start = t; t += a.duration; ln.end = t; }
+    else { ok = false; break; }
+  }
+  if (!ok) for (const ln of lines) { delete ln.start; delete ln.end; }
+  model.hasTimings = ok && FEATURES.timingSync;
+  model.declaredDuration = Number(output.audio?.duration_sec) || null;
+
+  model.stats = computeStats(model);
+  return model;
+}
+
+/** Narrator first, then line count desc, ties by name. Reassigns hues and relabels lines. */
+function orderCast(model) {
+  model.cast.sort((a, b) =>
+    (b.isNarration - a.isNarration) || (b.lines - a.lines) || a.name.localeCompare(b.name));
+  let n = 0;
+  for (const c of model.cast) c.hue = c.isNarration ? null : hueAt(n++);
+  const byKey = new Map(model.cast.map(c => [c.key, c]));
+  for (const l of model.lines) {
+    const c = byKey.get(l.key);
+    l.name = c.name; l.hue = c.hue; l.isNarration = c.isNarration;
+  }
+}
+
+function computeStats(model) {
+  let total = 0, dialogue = 0;
+  for (const l of model.lines) { total += l.words; if (!l.isNarration) dialogue += l.words; }
+  const people = model.cast.filter(c => !c.isNarration);
+  const top = people.filter(c => c.lines > 0).sort((a, b) => b.lines - a.lines || a.name.localeCompare(b.name))[0];
+  const real = model.audioDuration;
+  return {
+    speakers: people.length,
+    bubbles: model.lines.length,
+    dialogueShare: total ? Math.round((dialogue / total) * 100) : 0,
+    top: top ? { name: top.name, count: top.lines } : null,
+    runtimeSec: Number.isFinite(real) ? real : (total / CONFIG.WPM) * 60,
+    runtimeEstimated: !Number.isFinite(real),
+  };
+}
+
+/** Payload for synthesis: the client-side cast, including any merges. */
+function toPayload(model) {
+  return {
+    annotation: model.lines.map(l => ({ speaker: l.key, text: l.text })),
+    characters: Object.fromEntries(model.cast.map(c => [c.key, {
+      name: c.name, n_dialogue: c.lines, gender: c.gender, age: c.age, voice: c.voice,
+    }])),
+  };
+}
+
+/* ════════════════════════════════════════════════════════════════
+   State (§6) — setState() is the single entry point
+   ════════════════════════════════════════════════════════════════ */
+const state = {
+  phase: 'boot',
+  status: null,
+  manifest: null,
+  samples: [],
+  voices: [],                 // working copy of the catalogue
+  previews: new Map(),        // voice id → url, only for clips that exist
+  texts: new Map(),           // sample id → text
+  textErrors: new Map(),      // sample id → message
+  sampleId: null,
+  model: null,
+  ctl: null,                  // active staged run
+  fatal: null,                // manifest-level failure
+  analyzeError: null,
+  audioError: null,
+  undo: null,
+};
+
+const sample = () => state.samples.find(s => s.id === state.sampleId) || null;
+const currentText = () => state.texts.get(state.sampleId) ?? '';
+function overLimit(text = currentText()) {
+  return countWords(text) > CONFIG.MAX_WORDS || text.length > CONFIG.MAX_CHARS;
+}
+
+function setState(next, patch = {}) {
+  const prev = state.phase;
+  Object.assign(state, patch);
+  state.phase = next;
+  applyState(prev);
+}
+
+const shownOnce = new WeakSet();
+function show(node, on) {
+  if (on && node.hidden) {
+    node.hidden = false;
+    if (!shownOnce.has(node) && !reducedMotion()) { node.classList.add('reveal'); shownOnce.add(node); }
+  } else if (!on) node.hidden = true;
+}
+
+/** Re-applies the whole enablement matrix of §6. */
+function applyState(prev) {
+  const p = state.phase;
+  const has = !!state.model;
+  const results = has && (p === 'analyzed' || p === 'synthesizing' || p === 'ready' || p === 'analyzing');
+  const post = p === 'analyzed' || p === 'ready';
+
+  // Fatal (manifest) error: A–B + error card, nothing else.
+  const fatal = !!state.fatal;
+  $('#fatal').hidden = !fatal;
+  for (const id of ['#region-picker', '#region-input', '#region-analyze'])
+    $(id).hidden = fatal;
+  if (fatal) { $('#limit-msg').hidden = true; }
+
+  // C · Picker
+  const pickerLocked = p === 'boot' || p === 'analyzing' || p === 'synthesizing';
+  for (const r of document.querySelectorAll('#cards input[type=radio]'))
+    r.disabled = pickerLocked || state.textErrors.has(r.value);
+
+  // D · input length guard (not a state)
+  const text = currentText(), long = overLimit(text);
+  const words = countWords(text);
+  const wc = $('#wc');
+  wc.textContent = `${nf.format(words)} / ${nf.format(CONFIG.MAX_WORDS)} words`;
+  wc.classList.toggle('over', long);
+  const lm = $('#limit-msg');
+  lm.hidden = !long || fatal;
+  lm.textContent = long ? `This text is too long. NarrateIt accepts up to ${nf.format(CONFIG.MAX_WORDS)} words — about one chapter.` : '';
+
+  // E · Analyze
+  const ba = $('#btn-analyze');
+  ba.hidden = p === 'analyzing';
+  ba.textContent = post || p === 'synthesizing' ? 'Re-analyze' : 'Analyze Text';
+  ba.classList.toggle('secondary', post || p === 'synthesizing');
+  ba.disabled = !(p === 'idle' || post || (p === 'error' && !fatal)) || long || !state.sampleId || !state.texts.has(state.sampleId);
+  $('#prog-analyze').hidden = p !== 'analyzing';
+  $('#results').setAttribute('aria-busy', String(p === 'analyzing'));
+  const ae = $('#analyze-error');
+  ae.hidden = !(p === 'error' && state.analyzeError);
+
+  // F, G, H, I
+  show($('#region-stats'), results);
+  show($('#region-cast'), results);
+  show($('#region-transcript'), results);
+  show($('#region-synth'), results);
+  const bs = $('#btn-synth');
+  bs.hidden = p === 'synthesizing';
+  bs.textContent = p === 'ready' ? 'Regenerate' : 'Generate Audiobook';
+  bs.classList.toggle('secondary', p === 'ready');
+  bs.disabled = !post;
+  bs.title = post ? '' : 'Analyze the text first';
+  $('#prog-synth').hidden = p !== 'synthesizing';
+  $('#region-player').setAttribute('aria-busy', String(p === 'synthesizing'));
+
+  // Voice ▶ previews: enabled from analyzed onward, including synthesizing.
+  const pvOn = post || p === 'synthesizing';
+  for (const b of document.querySelectorAll('.pv')) b.disabled = !pvOn;
+
+  // J · Player: shown in ready, or (analyzed) to carry an audio error card only.
+  const playerOn = p === 'ready' || (p === 'analyzed' && !!state.audioError);
+  show($('#region-player'), playerOn);
+  $('#pl').hidden = p !== 'ready';
+  $('#pl-error').hidden = !state.audioError || p === 'ready';
+  $('#region-player').classList.toggle('err-only', p !== 'ready');
+  updatePlayerHeight();
+
+  // Scroll: on entering analyzed, bring F into view (instant under reduced motion).
+  if (p === 'analyzed' && prev === 'analyzing') {
+    requestAnimationFrame(() => $('#region-stats').scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }));
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Rendering — one function per region
+   ════════════════════════════════════════════════════════════════ */
+
+/* B */
+function renderBanner() {
+  const s = state.status || {};
+  const set = (id, label, v) => { const n = $(id); n.dataset.v = v || 'unknown'; n.textContent = `${label} · ${v || 'unknown'}`; };
+  set('#pill-annotator', 'Annotation model', s.annotator);
+  set('#pill-tts', 'Speech synthesis', s.tts);
+}
+
+/* Fatal */
+function renderFatal() {
+  const box = $('#fatal');
+  box.replaceChildren();
+  if (!state.fatal) return;
+  box.append(h('div', { class: 'err-card', role: 'alert' },
+    h('p', {}, state.fatal),
+    h('button', { class: 'btn secondary small', type: 'button', onclick: () => boot() }, 'Retry')));
+}
+
+/* C */
+function renderCards() {
+  const host = $('#cards');
+  host.replaceChildren(...state.samples.map(s => {
+    const err = state.textErrors.get(s.id);
+    return h('label', { class: 'card panel' },
+      h('input', { type: 'radio', name: 'sample', value: s.id, checked: s.id === state.sampleId, 'aria-describedby': `blurb-${s.id}` }),
+      h('p', { class: 'card-title' }, s.title || s.id),
+      s.blurb ? h('p', { class: 'card-blurb', id: `blurb-${s.id}` }, s.blurb) : null,
+      s.credit ? h('p', { class: 'card-credit' }, s.credit) : null,
+      err ? h('p', { class: 'card-err' }, err) : null);
+  }));
+}
+
+/* D */
+function renderInput() {
+  const ta = $('#input-text');
+  ta.classList.remove('skel');
+  ta.value = currentText();
+  ta.scrollTop = 0;
+}
+
+/* E error card */
+function renderAnalyzeError() {
+  const box = $('#analyze-error');
+  box.replaceChildren();
+  if (!state.analyzeError) return;
+  box.append(h('div', { class: 'err-card', role: 'alert' },
+    h('p', {}, `Couldn’t load the analysis for this sample — ${state.analyzeError}. Press Analyze Text to try again.`)));
+}
+
+/* F */
+function renderStats() {
+  const s = state.model.stats;
+  const tile = (label, value, id) => h('div', { class: 'tile panel' }, h('dt', {}, label), h('dd', { id }, value));
+  $('#stats').replaceChildren(
+    tile('Speakers', nf.format(s.speakers)),
+    tile('Segments', nf.format(s.bubbles)),
+    tile('Dialogue', `${s.dialogueShare}%`),
+    tile('Most lines', s.top ? `${s.top.name} (${nf.format(s.top.count)})` : '—'),
+    tile('Runtime', runtimeNode(s), 'stat-runtime'));
+}
+function runtimeNode(s) {
+  return s.runtimeEstimated
+    ? h('span', { title: `Estimated at ${CONFIG.WPM} words per minute` }, '≈', fmtTime(s.runtimeSec), ' ', h('small', {}, 'est.'))
+    : fmtTime(s.runtimeSec);
+}
+function updateRuntime() {
+  if (!state.model) return;
+  state.model.stats = computeStats(state.model);
+  const dd = $('#stat-runtime');
+  if (dd) dd.replaceChildren(runtimeNode(state.model.stats));
+}
+
+/* G — demo-locked controls are wrapped so the shared handler can catch clicks. */
+function lock(control) {
+  control.disabled = true;
+  control.setAttribute('aria-disabled', 'true');
+  return h('span', { class: 'lock', title: DEMO_TITLE, 'data-demo-lock': '' }, control);
+}
+function demoGate(control) { return API_MODE === 'demo' ? lock(control) : control; }
+
+const MERGE_ICON = '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2.5c0 4 5 4 5 7.5M13 2.5c0 4-5 4-5 7.5V14m-2.5-2.5L8 14l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function renderCast() {
+  const m = state.model;
+  const body = $('#cast-body');
+  body.replaceChildren(...m.cast.map(c => {
+    const hue = c.hue == null ? null : `--h:${c.hue}`;
+
+    const gSel = h('select', { class: 'ctl', 'aria-label': `Gender of ${c.name}` },
+      h('option', { value: 'f', selected: c.gender === 'f' }, 'Female'),
+      h('option', { value: 'm', selected: c.gender === 'm' }, 'Male'),
+      c.gender !== 'f' && c.gender !== 'm' && c.gender != null ? h('option', { value: String(c.gender), selected: true }, String(c.gender)) : null);
+
+    const age = h('input', {
+      class: 'ctl ctl-age', type: 'number', min: 1, max: 120, inputmode: 'numeric',
+      'aria-label': `Age of ${c.name}`, placeholder: '—', value: Number.isFinite(Number(c.age)) && c.age !== null ? String(c.age) : '',
+    });
+
+    const vSel = h('select', { class: 'ctl', 'aria-label': `Voice for ${c.name}` },
+      ...voiceGroups(state.voices).map(([label, vs]) => h('optgroup', { label },
+        ...vs.map(v => h('option', { value: v.id, selected: v.id === c.voice }, v.label || v.id)))));
+    if (!c.voice) vSel.prepend(h('option', { value: '', selected: true }, '—'));
+
+    const pvUrl = c.voice && FEATURES.voicePreviews ? state.previews.get(c.voice) : null;
+    const pv = pvUrl ? h('button', {
+      class: 'iconbtn pv', type: 'button', 'data-voice': c.voice, 'aria-label': `Preview voice ${c.voice}`, title: `Preview ${c.voice}`,
+    }, h('span', { class: 'pv-ico', 'aria-hidden': 'true' }, '▶'), h('span', { class: 'pv-bar' })) : null;
+
+    const mergeBtn = c.isNarration ? null : h('button', {
+      class: 'iconbtn', type: 'button', 'data-merge': c.key, 'aria-label': `Merge ${c.name} into another character`, title: 'Merge into…',
+    });
+    if (mergeBtn) mergeBtn.innerHTML = MERGE_ICON;
+
+    return h('tr', { 'data-key': c.key },
+      h('th', { scope: 'row', class: 'c-name' },
+        h('span', { class: 'dot' + (c.isNarration ? ' is-narr' : ''), style: hue, 'aria-hidden': 'true' }),
+        c.name,
+        h('span', { class: 'sub-gender' }, genderLabel(c.gender))),
+      h('td', { class: 'c-gender' }, demoGate(gSel)),
+      h('td', { class: 'r' }, demoGate(age)),
+      h('td', { class: 'r num' }, nf.format(c.lines)),
+      h('td', {}, h('div', { class: 'voice-cell' }, demoGate(vSel), pv)),
+      h('td', { class: 'c-act' }, mergeBtn ? (FEATURES.merge ? mergeBtn : lock(mergeBtn)) : null));
+  }));
+}
+
+/* H — chunked append; rows built in a DocumentFragment. */
+const T = { rendered: 0, io: null, activeIdx: -1, follow: true, programmaticUntil: 0 };
+
+function renderTranscript() {
+  const list = $('#t-list'), scroller = $('#t-scroll');
+  list.replaceChildren();
+  T.rendered = 0; T.activeIdx = -1;
+  scroller.scrollTop = 0;
+  T.io?.disconnect();
+
+  const m = state.model;
+  if (!m.lines.length) {
+    list.append(h('li', { class: 't-empty' }, 'The pipeline returned no lines for this text.'));
+    updateFades();
+    return;
+  }
+  if ('IntersectionObserver' in window) {
+    appendRows(CONFIG.CHUNK);
+    T.io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) appendRows(CONFIG.CHUNK); },
+      { root: scroller, rootMargin: '0px 0px 400px 0px' });
+    T.io.observe($('#t-sentinel'));
+  } else {
+    appendRows(Infinity);
+  }
+  applyTimingMode();
+  updateFades();
+}
+
+function buildRow(l) {
+  const timed = state.model.hasTimings;
+  return h('li', {
+    class: 't-row', 'data-i': l.i, 'aria-labelledby': `spk-${l.i}`,
+    role: timed ? 'button' : null, tabindex: timed ? '0' : null,
+  },
+    h('div', { class: 't-spk' },
+      h('span', { class: 'chip' + (l.isNarration ? ' is-narr' : ''), id: `spk-${l.i}`, style: l.hue == null ? null : `--h:${l.hue}` }, l.name)),
+    h('p', { class: 't-text' }, l.text),
+    h('div', { class: 't-act', hidden: !FEATURES.edit }));   // reserved edit/delete slot
+}
+
+function appendRows(n) {
+  const lines = state.model?.lines || [];
+  if (T.rendered >= lines.length) { T.io?.disconnect(); return; }
+  const frag = document.createDocumentFragment();
+  const end = Math.min(lines.length, T.rendered + n);
+  for (let i = T.rendered; i < end; i++) frag.append(buildRow(lines[i]));
+  $('#t-list').append(frag);
+  T.rendered = end;
+  if (T.rendered >= lines.length) T.io?.disconnect();
+  updateFades();
+}
+
+function updateFades() {
+  const s = $('#t-scroll'), w = $('#t-wrap');
+  w.classList.toggle('fade-top', s.scrollTop > 2);
+  w.classList.toggle('fade-bottom', s.scrollTop + s.clientHeight < s.scrollHeight - 2);
+}
+
+/* §4 · timing-synchronised transcript — inert unless model.hasTimings */
+function applyTimingMode() {
+  const on = !!state.model?.hasTimings;
+  $('#follow-wrap').hidden = !on;
+  for (const row of document.querySelectorAll('#t-list .t-row')) {
+    if (on) { row.setAttribute('role', 'button'); row.tabIndex = 0; }
+    else { row.removeAttribute('role'); row.removeAttribute('tabindex'); row.classList.remove('is-active'); }
+  }
+  const a = $('#audio');
+  a.removeEventListener('timeupdate', syncHighlight);
+  a.removeEventListener('seeked', syncHighlight);
+  if (on) { a.addEventListener('timeupdate', syncHighlight); a.addEventListener('seeked', syncHighlight); }
+  else T.activeIdx = -1;
+}
+
+function lineAt(t) {
+  const L = state.model.lines;
+  let lo = 0, hi = L.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (L[mid].start <= t) { ans = mid; lo = mid + 1; } else hi = mid - 1;
+  }
+  return ans;
+}
+
+function syncHighlight() {
+  if (!state.model?.hasTimings) return;
+  const i = lineAt($('#audio').currentTime);
+  if (i === T.activeIdx) return;
+  if (i >= T.rendered) appendRows(i - T.rendered + CONFIG.CHUNK);
+  $(`#t-list .t-row[data-i="${T.activeIdx}"]`)?.classList.remove('is-active');
+  T.activeIdx = i;
+  const row = $(`#t-list .t-row[data-i="${i}"]`);
+  if (!row) return;
+  row.classList.add('is-active');
+  if (T.follow) centreRow(row);
+}
+
+function centreRow(row) {
+  const s = $('#t-scroll');
+  T.programmaticUntil = performance.now() + 800;
+  s.scrollTo({ top: row.offsetTop - s.clientHeight / 2 + row.offsetHeight / 2, behavior: reducedMotion() ? 'auto' : 'smooth' });
+}
+
+function validateTimings(realDur) {
+  const m = state.model;
+  if (!m?.hasTimings || !Number.isFinite(realDur) || !m.lines.length) return;
+  const last = m.lines.at(-1).end;
+  const dev = Math.abs(last - realDur) / realDur;
+  if (dev > 0.10) {
+    console.warn(`[narrateit] timings end at ${last.toFixed(2)}s but audio is ${realDur.toFixed(2)}s (${(dev * 100).toFixed(1)}% off); disabling sync`);
+    m.hasTimings = false;
+    applyTimingMode();
+  } else if (dev > 0.02) {
+    console.warn(`[narrateit] timings end at ${last.toFixed(2)}s, audio is ${realDur.toFixed(2)}s (${(dev * 100).toFixed(1)}% off); proceeding`);
+  }
+}
+
+/* Stage ticker (E and I share it) */
+function stageUpdater(progId) {
+  const prog = $(progId), fill = $('.prog-fill', prog), label = $('.prog-label', prog);
+  let lastText = '';
+  return (stage, fraction, detail) => {
+    fill.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction))})`;
+    let txt = STAGE_LABELS[stage] || stage;
+    txt = txt.replace('{name}', detail || 'lines');
+    if (txt !== lastText) { label.textContent = txt; lastText = txt; }
+  };
+}
+
+/* Toasts */
+let lastDemoToast = 0, toastTimer = 0;
+function toast(msg, { action, ms = CONFIG.TOAST_MS } = {}) {
+  const host = $('#toast-host');
+  clearTimeout(toastTimer);
+  const t = h('div', { class: 'toast', role: 'status' }, h('span', {}, msg),
+    action ? h('button', { type: 'button', onclick: () => { action.run(); host.replaceChildren(); } }, action.label) : null);
+  host.replaceChildren(t);
+  toastTimer = setTimeout(() => host.replaceChildren(), ms);
+}
+function demoNudge(node) {
+  if (!reducedMotion()) { node.classList.remove('shake'); void node.offsetWidth; node.classList.add('shake'); }
+  const now = Date.now();
+  if (now - lastDemoToast < CONFIG.TOAST_RATE_MS) return;
+  lastDemoToast = now;
+  toast('This control is disabled in demo mode — see the note at the top of the page.');
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Player (J)
+   ════════════════════════════════════════════════════════════════ */
+const P = { speedIdx: 1, dragging: false };
+
+function initPlayer() {
+  const a = $('#audio');
+  a.removeAttribute('controls');            // scripting works: switch to custom controls
+  a.hidden = true;
+
+  $('#pl-play').addEventListener('click', () => (a.paused ? a.play() : a.pause()));
+  a.addEventListener('play', syncPlayIcon);
+  a.addEventListener('pause', syncPlayIcon);
+  a.addEventListener('ended', syncPlayIcon);
+  a.addEventListener('timeupdate', () => {
+    $('#pl-cur').textContent = fmtTime(a.currentTime);
+    if (!P.dragging) $('#pl-seek').value = a.currentTime;
+  });
+  a.addEventListener('durationchange', () => {
+    $('#pl-seek').max = a.duration || 0;
+    $('#pl-dur').textContent = fmtTime(a.duration);
+  });
+
+  const seek = $('#pl-seek');
+  seek.addEventListener('input', () => { P.dragging = true; $('#pl-cur').textContent = fmtTime(+seek.value); });
+  seek.addEventListener('change', () => { a.currentTime = +seek.value; P.dragging = false; });
+
+  $('#pl-speed').addEventListener('click', () => {
+    P.speedIdx = (P.speedIdx + 1) % CONFIG.SPEEDS.length;
+    const r = CONFIG.SPEEDS[P.speedIdx];
+    a.playbackRate = r;
+    $('#pl-speed').textContent = `${r}×`;
+    $('#pl-speed').setAttribute('aria-label', `Playback speed ${r}×`);
+  });
+
+  $('#pl-more').addEventListener('click', e => {
+    const ex = $('#pl-extra'), open = !ex.classList.contains('open');
+    ex.classList.toggle('open', open);
+    e.currentTarget.setAttribute('aria-expanded', String(open));
+  });
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#pl-extra, #pl-more')) { $('#pl-extra').classList.remove('open'); $('#pl-more').setAttribute('aria-expanded', 'false'); }
+  });
+
+  new ResizeObserver(updatePlayerHeight).observe($('#region-player'));
+}
+
+function syncPlayIcon() {
+  const a = $('#audio');
+  $('#ico-play').toggleAttribute('hidden', !a.paused);   // SVG has no .hidden property
+  $('#ico-pause').toggleAttribute('hidden', a.paused);
+  $('#pl-play').setAttribute('aria-label', a.paused ? 'Play' : 'Pause');
+}
+
+function updatePlayerHeight() {
+  const r = $('#region-player');
+  document.documentElement.style.setProperty('--player-h', r.hidden ? '0px' : `${r.offsetHeight}px`);
+}
+
+function teardownPlayer() {
+  const a = $('#audio');
+  a.pause();
+  a.onloadedmetadata = a.onerror = null;
+  a.removeAttribute('src');
+  a.load();
+  $('#pl-seek').value = 0; $('#pl-seek').max = 0;
+  $('#pl-cur').textContent = '0:00'; $('#pl-dur').textContent = '0:00';
+  syncPlayIcon();
+}
+
+/** Loads the audio; ready on loadedmetadata, a scoped error card on failure. */
+function loadAudio(url, onReady, onFail) {
+  const a = $('#audio');
+  teardownPlayer();
+  a.preload = 'metadata';
+  a.playbackRate = CONFIG.SPEEDS[P.speedIdx];
+  a.onloadedmetadata = () => { a.onloadedmetadata = a.onerror = null; onReady(a.duration); };
+  a.onerror = () => { a.onloadedmetadata = a.onerror = null; onFail(); };
+  a.src = url;
+  $('#pl-dl').href = url;
+  $('#pl-dl').setAttribute('download', url.split('/').pop() || 'audiobook.mp3');
+  a.load();
+}
+
+function renderAudioError() {
+  const box = $('#pl-error');
+  box.replaceChildren();
+  if (!state.audioError) return;
+  box.append(
+    h('p', {}, 'The audio file ', h('code', {}, state.audioError), ' could not be loaded — it is missing or not a playable MP3. The cast and transcript above are unaffected.'),
+    h('button', { class: 'btn secondary small', type: 'button', onclick: () => generate() }, 'Try again'));
+}
+
+/* Voice previews (§7) — one shared Audio object. */
+const preview = { audio: null, btn: null };
+function previewAudio() {
+  if (!preview.audio) {
+    preview.audio = new Audio();
+    preview.audio.preload = 'none';
+    preview.audio.addEventListener('playing', () => setPv(preview.btn, 'playing'));
+    preview.audio.addEventListener('ended', stopPreview);
+    preview.audio.addEventListener('error', () => {
+      const b = preview.btn; stopPreview();
+      if (b) { b.remove(); console.warn('[narrateit] voice preview failed to load; hiding its button'); }
+    });
+  }
+  return preview.audio;
+}
+function setPv(btn, st) {
+  if (!btn) return;
+  btn.dataset.state = st;
+  $('.pv-ico', btn).textContent = st === 'idle' ? '▶' : '■';
+  btn.setAttribute('aria-pressed', String(st !== 'idle'));
+}
+function stopPreview() {
+  if (preview.audio) preview.audio.pause();
+  setPv(preview.btn, 'idle');
+  preview.btn = null;
+}
+function togglePreview(btn) {
+  const same = preview.btn === btn;
+  stopPreview();
+  if (same) return;
+  const url = state.previews.get(btn.dataset.voice);
+  if (!url) return;
+  const main = $('#audio');
+  if (!main.paused) main.pause();           // not resumed afterwards
+  const a = previewAudio();
+  preview.btn = btn;
+  setPv(btn, 'loading');
+  a.src = url;
+  a.currentTime = 0;
+  a.play().catch(() => {});
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Merge (§5) — implemented; control ships disabled (FEATURES.merge)
+   ════════════════════════════════════════════════════════════════ */
+function mergeCharacters(sourceKey, targetKey) {
+  const m = state.model;
+  if (!m || sourceKey === targetKey) return false;
+  const src = m.cast.find(c => c.key === sourceKey), tgt = m.cast.find(c => c.key === targetKey);
+  if (!src || !tgt || src.isNarration) return false;
+  state.undo = { model: structuredClone(m), phase: state.phase };       // 1 · single-slot snapshot
+  for (const l of m.lines) if (l.key === sourceKey) l.key = targetKey;  // 2
+  tgt.lines += src.lines;                                               // 3
+  m.cast = m.cast.filter(c => c !== src);
+  orderCast(m);                                                         // 4
+  m.stats = computeStats(m);                                            // 5
+  rerenderAnalysis();                                                   // 6
+  if (state.phase === 'ready' || state.audioError) { teardownPlayer(); }
+  m.audioDuration = null; m.stats = computeStats(m); renderStats();   // audio no longer matches
+  setState('analyzed', { audioError: null });
+  toast(`Merged ${src.name} into ${tgt.name}`, { ms: CONFIG.UNDO_MS, action: { label: 'Undo', run: undoMerge } });  // 7
+  return true;
+}
+function undoMerge() {
+  if (!state.undo) return false;
+  state.model = state.undo.model;
+  state.model.audioDuration = null;
+  state.model.stats = computeStats(state.model);
+  state.undo = null;
+  rerenderAnalysis();
+  setState('analyzed');
+  return true;
+}
+function rerenderAnalysis() { renderStats(); renderCast(); renderTranscript(); }
+
+function openMerge(btn) {
+  const pop = $('#merge-pop'), m = state.model, key = btn.dataset.merge;
+  const src = m.cast.find(c => c.key === key);
+  $('#merge-src').textContent = src.name;
+  $('#merge-target').replaceChildren(...m.cast.filter(c => c.key !== key).map(c => h('option', { value: c.key }, c.name)));
+  pop.hidden = false;
+  const r = btn.getBoundingClientRect();
+  pop.style.top = `${r.bottom + scrollY + 6}px`;
+  pop.style.left = `${Math.max(8, r.right + scrollX - pop.offsetWidth)}px`;
+  pop.dataset.src = key;
+  $('#merge-target').focus();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Actions
+   ════════════════════════════════════════════════════════════════ */
+function selectSample(id) {
+  if (id === state.sampleId && state.phase === 'idle') return;
+  teardownPlayer();
+  stopPreview();
+  $('#merge-pop').hidden = true;
+  $('#t-list').replaceChildren();
+  T.io?.disconnect();
+  setState('idle', { sampleId: id, model: null, analyzeError: null, audioError: null, undo: null });
+  renderInput();
+}
+
+async function analyze() {
+  if (overLimit()) return;
+  const ctl = { skip: false };
+  const onStage = stageUpdater('#prog-analyze');
+  onStage(ANALYZE_STAGES[0], 0);
+  teardownPlayer();
+  stopPreview();
+  setState('analyzing', { ctl, analyzeError: null, audioError: null });
+  try {
+    const out = await api.analyze(currentText(), { onStage, sample: sample(), ctl });
+    const model = normalise(out, state.voices);
+    state.model = model;
+    state.undo = null;
+    rerenderAnalysis();
+    setState('analyzed', { ctl: null });
+  } catch (err) {
+    console.error(err);
+    state.model = null;
+    state.analyzeError = err.message;
+    renderAnalyzeError();
+    setState('error', { ctl: null });
+  }
+}
+
+async function generate() {
+  if (!state.model) return;
+  const ctl = { skip: false };
+  const onStage = stageUpdater('#prog-synth');
+  onStage(SYNTH_STAGES[0], 0);
+  teardownPlayer();
+  setState('synthesizing', { ctl, audioError: null });
+  try {
+    const res = await api.synthesize(toPayload(state.model), { onStage, sample: sample(), ctl });
+    onStage('loading_audio', 1);
+    loadAudio(res.audioUrl,
+      dur => {
+        state.model.audioDuration = Number.isFinite(dur) ? dur : res.durationSec;
+        updateRuntime();
+        validateTimings(dur);
+        setState('ready', { ctl: null });
+      },
+      () => {
+        state.audioError = res.audioUrl;
+        renderAudioError();
+        setState('analyzed', { ctl: null });
+      });
+  } catch (err) {
+    console.error(err);
+    state.audioError = err.message;
+    renderAudioError();
+    setState('analyzed', { ctl: null });
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Event wiring
+   ════════════════════════════════════════════════════════════════ */
+function wire() {
+  $('#cards').addEventListener('change', e => { if (e.target.name === 'sample') selectSample(e.target.value); });
+  $('#btn-analyze').addEventListener('click', analyze);
+  $('#btn-synth').addEventListener('click', generate);
+
+  for (const id of ['#prog-analyze', '#prog-synth']) {
+    const skip = () => { if (state.ctl) state.ctl.skip = true; };
+    $(id).addEventListener('click', skip);
+    $(id).addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); skip(); } });
+  }
+
+  // Demo-locked controls: one shared handler. Clicks are intercepted, never suppressed.
+  document.addEventListener('click', e => {
+    const l = e.target.closest('[data-demo-lock]');
+    if (l) { e.preventDefault(); demoNudge(l); }
+  });
+  // Readonly input: typing nudges toward the banner instead of silently doing nothing.
+  $('#input-text').addEventListener('keydown', e => {
+    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) demoNudge($('#region-input'));
+  });
+
+  // Voice previews + merge
+  $('#cast-body').addEventListener('click', e => {
+    const pv = e.target.closest('.pv');
+    if (pv && !pv.disabled) return togglePreview(pv);
+    const mg = e.target.closest('[data-merge]');
+    if (mg && FEATURES.merge && !mg.disabled) openMerge(mg);
+  });
+  $('#merge-cancel').addEventListener('click', () => { $('#merge-pop').hidden = true; });
+  $('#merge-ok').addEventListener('click', () => {
+    const pop = $('#merge-pop');
+    pop.hidden = true;
+    mergeCharacters(pop.dataset.src, $('#merge-target').value);
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') $('#merge-pop').hidden = true; });
+
+  // Transcript: fades, follow toggle, click-to-seek (only active when rows carry role=button)
+  const sc = $('#t-scroll');
+  sc.addEventListener('scroll', updateFades, { passive: true });
+  const manual = () => {
+    if (state.model?.hasTimings && T.follow) { T.follow = false; $('#follow').checked = false; }
+  };
+  sc.addEventListener('wheel', manual, { passive: true });
+  sc.addEventListener('touchstart', manual, { passive: true });
+  sc.addEventListener('pointerdown', e => { if (e.target === sc) manual(); });
+  sc.addEventListener('keydown', e => { if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(e.key) && e.target === sc) manual(); });
+  $('#follow').addEventListener('change', e => {
+    T.follow = e.target.checked;
+    const row = $(`#t-list .t-row[data-i="${T.activeIdx}"]`);
+    if (T.follow && row) centreRow(row);
+  });
+  const seekToRow = row => {
+    if (!state.model?.hasTimings || !row || row.getAttribute('role') !== 'button') return;
+    const a = $('#audio'), l = state.model.lines[+row.dataset.i];
+    if (state.phase !== 'ready' || !l) return;
+    a.currentTime = l.start;
+    syncHighlight();
+  };
+  $('#t-list').addEventListener('click', e => seekToRow(e.target.closest('.t-row')));
+  $('#t-list').addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('t-row')) { e.preventDefault(); seekToRow(e.target); }
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════
+   init()
+   ════════════════════════════════════════════════════════════════ */
+async function checkPreviews(voices) {
+  state.previews.clear();
+  if (!FEATURES.voicePreviews) return;
+  await Promise.all(voices.map(async v => {
+    if (!v.preview) return;
+    try {
+      const r = await fetch(v.preview, { method: 'HEAD' });
+      if (r.ok) state.previews.set(v.id, v.preview);
+    } catch { /* absent → no ▶ */ }
+  }));
+}
+
+async function boot() {
+  state.fatal = null;
+  renderFatal();
+  setState('boot');
+
+  api.status().then(s => { state.status = s; }, () => { state.status = null; }).finally(renderBanner);
+
+  let manifest;
+  try {
+    manifest = await getJSON(CONFIG.MANIFEST);
+    if (!manifest || !Array.isArray(manifest.samples) || !manifest.samples.length) throw new Error(`${CONFIG.MANIFEST} lists no samples`);
+  } catch (err) {
+    console.error(err);
+    state.fatal = `Couldn’t load the sample list (${err.message}).`;
+    renderFatal();
+    return setState('error');
+  }
+
+  let samples = manifest.samples;
+  if (samples.length > CONFIG.MAX_SAMPLES) {
+    console.warn(`[narrateit] manifest lists ${samples.length} samples; showing the first ${CONFIG.MAX_SAMPLES}`);
+    samples = samples.slice(0, CONFIG.MAX_SAMPLES);
+  }
+  state.manifest = manifest;
+  state.samples = samples;
+  state.voices = (manifest.voices || []).map(v => ({ ...v }));
+  state.texts.clear(); state.textErrors.clear();
+
+  await Promise.all([
+    checkPreviews(state.voices),
+    ...samples.map(async s => {
+      try {
+        const r = await fetch(s.text);
+        if (!r.ok) throw new Error(`${r.status} ${r.statusText}`.trim());
+        state.texts.set(s.id, await r.text());
+      } catch (err) {
+        state.textErrors.set(s.id, `Couldn’t load ${s.text.split('/').pop()} (${err.message}).`);
+      }
+    }),
+  ]);
+
+  const first = samples.find(s => state.texts.has(s.id));
+  if (!first) {
+    state.fatal = 'None of the samples’ text files could be loaded. Check that the samples folder sits next to index.html.';
+    renderFatal();
+    return setState('error');
+  }
+  state.sampleId = first.id;
+  renderCards();
+  renderInput();
+  setState('idle', { model: null });
+}
+
+function init() {
+  if (API_MODE === 'demo') $('#upload-slot').replaceChildren(lock($('#btn-upload')));
+  initPlayer();
+  wire();
+  boot();
+  // Console hooks for exercising merge/timing paths (build step 7).
+  window.narrateit = { state, FEATURES, CONFIG, mergeCharacters, undoMerge, normalise };
+}
+
+init();
+</script>
+</body>
+</html>
