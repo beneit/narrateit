@@ -219,9 +219,11 @@ def get_end_of_sequence_token(model, tokenizer):
     return eos_token
 
 
-def get_sentences(text, sat_model="models/sat-3l-sm"):
+def get_sentences(text, sat_model="models_ttt/sat-3l-sm"):
     from wtpsplit import SaT
     sat = SaT(sat_model)
     sat.half().to("cuda")
     sentences = sat.split(text)
     return sentences
+
+

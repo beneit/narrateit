@@ -1,32 +1,83 @@
 import os
 import re
-import codecs
 import json
 import time
+from abc import ABC, abstractmethod
 # from json_extractor import JsonExtractor
 from .util import write_to_file, clean_annotations, save_json, clean_string, config, read_file
-from .prompt_util import get_prompt, append_annotations, create_dual_segments, append_previous_annotations
+from .prompt_util import get_prompt, append_previous_annotations, \
+    extract_characters
 
 from tqdm import tqdm
-from .transformer_util import load_model_tokenizer, generate_genders, init_transformer_states, get_sentences
+from .transformer_util import generate_genders
 # from .transformer_util import generate_annotations as generate_text
 # from .transformer_util import generate_based_on_state as generate_text
 from .transformer_util import generate_json
 
 
+class BaseModel(ABC):
+    @abstractmethod
+    def annotate(self, text, verbose=0):
+        pass
+
+
+def get_model():
+    model_path = config['annotation_model']
+    strategy = config['prompt_strategy']
+    split = re.split(r'[/\\]', model_path)
+    
+    if split[0].lower() == "openai" and len(split) == 2:
+        if strategy == "structured_explanation":
+            from .ttt.openai import OpenAIWithExplanations as Model
+            return Model(re.split(r'[/\\]', model_path)[1])
+        elif strategy == "chat":
+            from .ttt.openai import OpenAIStructuredChat as Model
+            return Model(re.split(r'[/\\]', model_path)[1])
+    else:
+        if strategy == "structured_explanation":
+            from .ttt.transformers import TransformerWithStructuredExplanations as Model
+            return Model()
+    raise(ValueError(f"No model loading mechanism available for model string '{model_path}' and strategy '{strategy}'"))
+
+
+def compare_annotations(truth, generated, verbose=1):
+    """
+    truth: list with lists, [[...], [...], ...]
+    generated: list with lists [[...], [...], ...]
+    Here, [...] are annotations. Entries are dicts {"speaker": "name", "text": "spoken text"}
+    This method checks that for each entry the speakers are the same in the same order. If they are, the corresponding
+    entry in the first result list returned is True, False otherwise. The second  result has the same format but
+    additionally checks that all lines are the same.
+    """
+    assert(len(truth) == len(generated))
+    speakers_correct = []
+    words_correct = []
+    for i in range(len(truth)):
+        annotation_true = truth[i]
+        annotation_test = generated[i]
+        sid = 0
+        is_correct = len(annotation_test) == len(annotation_true)
+        words_correct_ = is_correct
+        while is_correct and sid < len(annotation_test):
+            is_correct = annotation_true[sid]['speaker'].lower() == annotation_test[sid]['speaker'].lower()
+            words_correct_ = is_correct and words_correct_
+            if words_correct_:
+                # check the text:
+                words_true = re.sub(r'[,\s]', '', annotation_true[sid]['text']).lower()
+                words_test = re.sub(r'[,\s]', '', annotation_test[sid]['text']).lower()
+                words_correct_ = words_true == words_test
+                if not words_correct_ and verbose:
+                    print(f"Words unaligned in sample {i}:\ns1={words_true}\ns2={words_test}")
+            sid += 1
+        speakers_correct.append(is_correct)
+        words_correct.append(words_correct_)
+    return speakers_correct, words_correct
+
+
+# TODO: Below is Legacy Code, refactor whats needed, delete the rest.
+
 class BadLLMOutput(Exception):
     pass
-
-
-def extract_characters(annotations):
-    characters = {}
-    for a in annotations:
-        name = a['speaker']
-        if name not in characters and name.lower() != 'narration':
-            characters[name] = {'name': name, 'n_dialogue': 1}
-        elif name.lower() != 'narration':
-            characters[name]['n_dialogue'] += 1
-    return characters
 
 
 def get_annotation(old_text, new_text, prompt, old_annotations, model, tokenizer):
@@ -165,39 +216,6 @@ def test_llm(model, tokenizer, examples):
     return annotations
 
 
-def compare_annotations(truth, generated):
-    """
-    truth: list with dicts, [{'text': s, 'annotation': [...]}, {}, ...]
-    generated: list with lists [[...], [...], ...]
-    Here, [...] are annotations. Entries are dicts {"speaker": "name", "text": "spoken text"}
-    """
-    assert(len(truth) == len(generated))
-    n_total = len(truth)
-    success = []
-    words_correct = []
-    for i in range(len(truth)):
-        # text = truth[i]['text']
-        annotation_true = truth[i]['annotation']
-        annotation_test = generated[i]
-        sid = 0
-        is_correct = len(annotation_test) == len(annotation_true)
-        words_correct_ = is_correct
-        while is_correct and sid < len(annotation_test):
-            is_correct = annotation_true[sid]['speaker'].lower() == annotation_test[sid]['speaker'].lower()
-            words_correct_ = is_correct and words_correct_
-            if words_correct_:
-                # check the text:
-                words_true = re.sub(r'[,\s]', '', annotation_true[sid]['text']).lower()
-                words_test = re.sub(r'[,\s]', '', annotation_test[sid]['text']).lower()
-                words_correct_ = words_true == words_test
-                if not words_correct_:
-                    print(f"Words unaligned in sample {i}:\ns1={words_true}\ns2={words_test}")
-            sid += 1
-        success.append(is_correct)
-        words_correct.append(words_correct_)
-    return success, words_correct
-
-
 def test_prompt(model, tokenizer):
     # test with examples
     examples = json.load(open(os.path.join('prompts', 'test_examples.json')))
@@ -239,17 +257,15 @@ def unload_llm():
 
 
 if __name__ == "__main__":
-    document = clean_string(read_file(config['document']))
-    # sentences = re.split(r'(?<=[.!?])', document)
-    sentences = get_sentences(document)
-    segments = create_dual_segments(sentences, config['min_segment_length'], config['min_overlap_length'])
+    text = clean_string(read_file(config['document']))
     
-    model_path = config['annotation_model']
-    model, tokenizer = load_model_tokenizer(model_path)
-    # test_prompt(model, tokenizer)
+    model = get_model()
+    annotations = model.annotate(text, verbose=1)
+    # TODO: Do characters via separate model that probably uses the same LLM in the background
+    characters = extract_characters(annotations)
     
-    # annotate a text:
-    result = annotate_with_llm(segments, model, tokenizer)
+    result = {'annotation': annotations, 'characters': characters, 'characters_resolved': False}
+    save_json(config['annotation_file'], result)
     
     # load a peft model
     # from peft_util import load_peft_model

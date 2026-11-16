@@ -2,9 +2,50 @@ import re
 import json
 
 
+def get_sentences(text):
+    """Split the text into sentences using the end of sentence indicators [.!?]"""
+    return re.split(r'(?<=[.!?])', text)
+
+
+def get_fragments(sentences):
+    """document is a complete text. sentences are split it into chunks we would recognize as sentences using a
+    nontrivial way to split not just based on ".!?". After that, we further split into fragments by splitting along
+    dialogue indicating symbols such as ["“”]. In this way, the sentence:
+     Suddenly Thomas cried "I can't deal with this anymore!" with a booming voice.
+    becomes three segments:
+    ['Suddenly Thomas cried ', '"I can't deal with this anymore!"', ' with a booming voice.']
+    No symbols are removed. If the fragments were to be joined via ''.join(fragments) it is the entire text
+    just as ''.join(sentences) also is.
+    """
+    fragments = []
+    for sentence in sentences:
+        parts = re.split(r'(["“”])', sentence)
+        fragment = ""
+        quote_open = True
+        if len(parts) > 0 and len(parts) % 2 == 0:
+            parts[-2] = ''.join(parts[-2:])
+            parts = parts[:-1]
+        for part in parts:
+            if part in ['"', '“', '”']:
+                if quote_open:
+                    if fragment:
+                        fragments.append(fragment)
+                    fragment = part
+                else:
+                    fragment += part
+                    fragments.append(fragment)
+                    fragment = ""
+                quote_open = not quote_open
+            else:
+                fragment += part
+        if fragment:
+            fragments.append(fragment)
+    return fragments
+
+
 def create_segments(text, min_segment_length, min_overlap_length):
-    # Split the text into sentences using the end of sentence indicators ".", "?", and "!"
-    sentences = re.split(r'(?<=[.!?])', text)
+    
+    sentences = get_sentences(text)
     
     segments = []
     idx_start = 0
@@ -41,6 +82,18 @@ def create_dual_segments(sentences, min_segment_length, min_overlap_length):
             swap = not swap
     segments.append(segment)
     return segments
+
+
+def create_structured_fewshot(examples, structure):
+    output = []
+    for example in examples:
+        text = ""
+        for i, (field, placement) in enumerate(structure):
+            if i < 5 or example[structure[4][0]] == 'Dialogue':
+                text += placement + example[field] + "\n"
+        text += "\n"
+        output.append(text)
+    return output
 
 
 def get_prompt(initial_prompt, all_speakers=None, last_speakers=None, genders=None, replacements=None):
@@ -111,6 +164,29 @@ def get_prompt(initial_prompt, all_speakers=None, last_speakers=None, genders=No
     
     prompt = re.sub(r'<(.*?)>', replace_keyword, initial_prompt)
     return prompt
+
+
+def get_context(segments, i, forward, min_context_length=200):
+    """
+    ''.join(segments) is a literary text. This function returns the text before or after the i'th text segment with a
+    minimum length of min_context_length. forward specifies whether to find the context after the i'th segment or
+    before. Special cases are when i is so small or large that the context is shorter than the min_context_length
+    or even empty. Only whole segments are added to the context window
+    """
+    if forward:
+        context_segments = segments[i+1:]
+    else:
+        context_segments = segments[:i][::-1]
+    context = []
+    current_length = 0
+    for segment in context_segments:
+        context.append(segment)
+        current_length += len(segment)
+        if current_length >= min_context_length:
+            break
+    if not forward:
+        context.reverse()
+    return ''.join(context)
 
 
 def append_prompt(prompt, text, previous_annotations):
@@ -188,3 +264,14 @@ def create_data_set(file, output_file):
                 "annotation": annotation_str
             }
             f_out.write(json.dumps(jsonl_entry, ensure_ascii=False) + '\n')
+
+
+def extract_characters(annotations):
+    characters = {}
+    for a in annotations:
+        name = a['speaker']
+        if name not in characters and name.lower() != 'narration':
+            characters[name] = {'name': name, 'n_dialogue': 1}
+        elif name.lower() != 'narration':
+            characters[name]['n_dialogue'] += 1
+    return characters

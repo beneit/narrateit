@@ -12,7 +12,7 @@ import warnings
 
 from narrateit.util import config
 
-voices = json.load(open(os.path.join('tts', 'XTTS-v2', 'samples', 'voices.json')))
+voices = json.load(open(os.path.join('models_tts', 'XTTS-v2', 'samples', 'voices.json')))
 device = "cuda" if torch.cuda.is_available() else "cpu"
 warnings.filterwarnings("ignore", category=UserWarning, module="pyloudnorm")
 
@@ -57,7 +57,8 @@ def load_tts(model_path):
     print(f"Loading model '{model_path}'...")
     xtts_config = XttsConfig()
     xtts_config.load_json(os.path.join(model_path, "config.json"))
-    model = Xtts.init_from_config(xtts_config)
+    # model = Xtts.init_from_config(xtts_config)
+    model = Xtts(xtts_config)
     model.load_checkpoint(xtts_config, checkpoint_dir=model_path, eval=True)
     if device[:4] == 'cuda':
         model.cuda()
@@ -140,8 +141,8 @@ def create_wave_files(document, model, tts_config):
 
 
 if __name__ == "__main__":
-    model, tts_config = load_tts('tts/XTTS-v2')
-    speaker = "tts/XTTS-v2/samples/LJ001-0026.wav"
+    model, tts_config = load_tts('model_tts/XTTS-v2')
+    speaker = "model_tts/XTTS-v2/samples/LJ001-0026.wav"
     # prompt = "The quick brown fox jumps over the lazy dog! This sentence contains every letter of the alphabet, making it ideal for testing pronunciation and clarity."
     prompt = 'I never said HE stole the money!'
     for voice in tqdm(voices):

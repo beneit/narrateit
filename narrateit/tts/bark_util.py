@@ -37,7 +37,7 @@ def create_wave(prompt, voice, model, processor, output_file=None):
 
 
 if __name__ == "__main__":
-    model, tokenizer = load_tts('tts/bark-small')
+    model, tokenizer = load_tts('model_tts/bark-small')
     prompt = "Hello, my name is Suno. And, uh — and I like pizza. [laughs] But I also have other interests such as playing tic tac toe."
-    voice_preset = "en_speaker_6" #tts/bark-small/speaker_embeddings/v2/
+    voice_preset = "en_speaker_6" #model_tts/bark-small/speaker_embeddings/v2/
     create_wave(prompt, voice_preset, model, tokenizer, output_file=None)

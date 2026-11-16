@@ -8,8 +8,7 @@ import torch
 from transformers import StoppingCriteriaList
 
 from .util import clean_string, config, clean_annotations, read_file
-from .annotate import extract_characters
-from .prompt_util import get_prompt
+from .prompt_util import get_prompt, get_context, get_fragments, extract_characters
 from .transformer_util import load_model_tokenizer, get_sentences
 
 
@@ -33,29 +32,6 @@ def get_llm_state(prompt, model, tokenizer):
             print(e)
         can_generate_state = False
     return state
-
-
-def get_context(fragments, i, forward, min_context_length=200):
-    """
-    ''.join(fragments) is a literary text. This function returns the text before or after the i'th text fragment with a
-    minimum length of min_context_length. forward specifies whether to find the context after the i'th fragment or
-    before. Special cases are when i is so small or large that the context is shorter than the min_context_length
-    or even empty. Only whole fragments are added to the context window
-    """
-    if forward:
-        context_fragments = fragments[i+1:]
-    else:
-        context_fragments = fragments[:i][::-1]
-    context = []
-    current_length = 0
-    for fragment in context_fragments:
-        context.append(fragment)
-        current_length += len(fragment)
-        if current_length >= min_context_length:
-            break
-    if not forward:
-        context.reverse()
-    return ''.join(context)
 
 
 def classify_dialogue(prompt, model, tokenizer, state=None):
@@ -266,42 +242,6 @@ def classify_document_with_explanation(fragments, model, tokenizer, character_mo
                     name = "Narration"
                 annotations.append({'speaker': name, 'text': words[j]})
     return clean_annotations(annotations)
-
-
-def get_fragments(sentences):
-    """document is a complete text. sentences are split it into chunks we would recognize as sentences using a
-    nontrivial way to split not just based on ".!?". After that, we further split into fragments by splitting along
-    dialogue indicating symbols such as ["“”]. In this way, the sentence:
-     Suddenly Thomas cried "I can't deal with this anymore!" with a booming voice.
-    becomes three segments:
-    ['Suddenly Thomas cried ', '"I can't deal with this anymore!"', ' with a booming voice.']
-    No symbols are removed. If the fragments were to be joined via ''.join(fragments) it is the entire text
-    just as ''.join(sentences) also is.
-    """
-    fragments = []
-    for sentence in sentences:
-        parts = re.split(r'(["“”])', sentence)
-        fragment = ""
-        quote_open = True
-        if len(parts) > 0 and len(parts) % 2 == 0:
-            parts[-2] = ''.join(parts[-2:])
-            parts = parts[:-1]
-        for part in parts:
-            if part in ['"', '“', '”']:
-                if quote_open:
-                    if fragment:
-                        fragments.append(fragment)
-                    fragment = part
-                else:
-                    fragment += part
-                    fragments.append(fragment)
-                    fragment = ""
-                quote_open = not quote_open
-            else:
-                fragment += part
-        if fragment:
-            fragments.append(fragment)
-    return fragments
 
 
 def annotate_with_llm(text, model, tokenizer, character_model=None):

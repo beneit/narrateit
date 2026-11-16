@@ -225,9 +225,8 @@ def resolve_characters(document: dict):
     return document
 
 
-def merge_audio():
+def merge_audio(directory):
     from pydub import AudioSegment
-    directory = os.path.join('output', 'waves')
     
     # Regular expression to match the file pattern
     pattern = re.compile(r'out_(\d+)_(\d+).wav')

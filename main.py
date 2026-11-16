@@ -14,7 +14,7 @@ def get_user_info(s):
                 return user_input.lower() == 'y'
             print("Invalid Input, answer y or n.")
         elif s == 'load_annotations':
-            user_input = input("Load annotations from file? [y/n]\n")
+            user_input = input("Load annotations from previous output? [y/n]\n")
             if user_input.lower() in ['y', 'n']:
                 return user_input.lower() == 'y'
             print("Invalid Input, answer y or n.")
@@ -24,37 +24,30 @@ def get_user_info(s):
 
 def annotate():
     from narrateit.annotate import clean_string
-    
-    if not os.path.exists('output'):
-        os.mkdir('output')
+    from narrateit.prompt_util import extract_characters
+
     # Create annotations
     text = clean_string(read_file(config['document']))
     use_characters = get_user_info("use_characters")
     if use_characters:
-        from narrateit.dialogue import annotate_with_llm
-        from narrateit.transformer_util import load_model_tokenizer
-        from narrateit.peft_util import load_peft_model
-        
         load_annotations = get_user_info("load_annotations")
         if load_annotations:
-            with open(config['annotation_file'], 'r', encoding='utf-8') as f:
-                annotations = json.load(f)
+            annotation_file = os.path.join('output', config['_document_name'], 'annotations.json')
+            with open(annotation_file, 'r', encoding='utf-8') as f:
+                return json.load(f)
         else:
-            model_path = config['annotation_model']
-            model_, tokenizer = load_model_tokenizer(model_path)
-            model = model_
-            if 'peft_model' in config and config['peft_model']:
-                model = load_peft_model(model_, config['peft_model'])
-            annotations = annotate_with_llm(text, model, tokenizer, model_)
+            from narrateit.annotate import get_model
+            model = get_model()
+            annotations = model.annotate(text)
+            # TODO: Do characters via separate model that probably uses the same LLM in the background
+            characters = extract_characters(annotations)
             del model
-            del model_
-            del tokenizer
             import torch
             torch.cuda.empty_cache()
             gc.collect()
+            return {'annotation': annotations, 'characters': characters, 'characters_resolved': False}
     else:
-        annotations = annotate_without_llm(text)
-    return annotations
+        return annotate_without_llm(text)
 
 
 def narrate(annotations):
@@ -64,10 +57,7 @@ def narrate(annotations):
     model, tokenizer = load_tts(config['tts_model'])
     create_wave_files(annotations, model, tokenizer)
     # Create final audio
-    merged_audio = merge_audio()
-    output_format = 'mp3'
-    output_file = '.'.join(os.path.split(config['document'])[1].split('.')[:-1] + [output_format])
-    merged_audio.export(os.path.join('output', output_file), format=output_format)
+    return merge_audio(os.path.join('output', config['_document_name'], 'waves'))
 
 
 def main():
@@ -96,28 +86,48 @@ def main():
         if add_to_config:
             config['document'] = file_name
             save_json(os.path.join("config", "config.json"), config)
+    
+    # Create output structure
+    if not os.path.exists('output'):
+        os.mkdir('output')
+    config['_document_name'] = '.'.join((os.path.split(config['document'])[-1]).split('.')[:-1])
+    annotation_file = os.path.join('output', config['_document_name'], 'annotations.json')
+    document_folder = os.path.join('output', config['_document_name'])
+    if not os.path.exists(document_folder):
+        os.mkdir(document_folder)
+    if not os.path.exists(os.path.join('output', config['_document_name'], 'waves')):
+        os.mkdir(os.path.join('output', config['_document_name'], 'waves'))
+    
     # Only annotate
     if args.annotate:
         annotations = annotate()
-        save_json(config['annotation_file'], annotations)
+        save_json(annotation_file, annotations)
+    
     # Only characterize
     if args.characters:
-        with open(config['annotation_file'], 'r', encoding='utf-8') as f:
+        with open(annotation_file, 'r', encoding='utf-8') as f:
             annotations = json.load(f)
         annotations = resolve_characters(annotations)
-        save_json(config['annotation_file'], annotations)
+        save_json(annotation_file, annotations)
+    
     # Only narrate
+    output_format = 'mp3'
+    audio_file = os.path.join('output', config['_document_name'], config['_document_name']) + '.' + output_format
     if args.narrate:
-        with open(config['annotation_file'], 'r', encoding='utf-8') as f:
+        with open(annotation_file, 'r', encoding='utf-8') as f:
             annotations = json.load(f)
-        narrate(annotations)
+        merged_audio = narrate(annotations)
+        save_json(annotation_file, annotations)
+        merged_audio.export(audio_file, format=output_format)
+    
     # Do the standard pipeline in case no keywords are given
     if not any(vars(args).values()):
         annotations = annotate()
-        save_json(config['annotation_file'], annotations)
+        save_json(annotation_file, annotations)
         annotations = resolve_characters(annotations)
-        save_json(config['annotation_file'], annotations)
-        narrate(annotations)
+        save_json(annotation_file, annotations)
+        merged_audio = narrate(annotations)
+        merged_audio.export(audio_file, format=output_format)
 
 
 def train_peft():

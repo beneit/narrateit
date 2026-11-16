@@ -1,3 +1,5 @@
+# TODO: remove old, unneeded code
+
 import codecs
 import re
 import json
