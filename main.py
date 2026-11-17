@@ -45,19 +45,23 @@ def annotate():
             import torch
             torch.cuda.empty_cache()
             gc.collect()
-            return {'annotation': annotations, 'characters': characters, 'characters_resolved': False}
+            return {'annotation': annotations,
+                    'characters': characters,
+                    'characters_resolved': False,
+                    'has_voice_mappings': False}
     else:
         return annotate_without_llm(text)
 
 
-def narrate(annotations):
+def narrate(document):
     from narrateit.tts.xtts_util import create_wave_files, load_tts
     from narrateit.narrate import merge_audio
     # Create wave files
     model, tokenizer = load_tts(config['tts_model'])
-    create_wave_files(annotations, model, tokenizer)
+    output_path = os.path.join('output', config['_document_name'], 'waves')
+    create_wave_files(document, model, tokenizer, output_path)
     # Create final audio
-    return merge_audio(os.path.join('output', config['_document_name'], 'waves'))
+    return merge_audio(document)
 
 
 def main():
@@ -93,40 +97,40 @@ def main():
     config['_document_name'] = '.'.join((os.path.split(config['document'])[-1]).split('.')[:-1])
     annotation_file = os.path.join('output', config['_document_name'], 'annotations.json')
     document_folder = os.path.join('output', config['_document_name'])
-    if not os.path.exists(document_folder):
-        os.mkdir(document_folder)
-    if not os.path.exists(os.path.join('output', config['_document_name'], 'waves')):
-        os.mkdir(os.path.join('output', config['_document_name'], 'waves'))
+    os.makedirs(os.path.join('output', config['_document_name'], 'waves'), exist_ok=True)
     
     # Only annotate
     if args.annotate:
-        annotations = annotate()
-        save_json(annotation_file, annotations)
+        document = annotate()
+        save_json(annotation_file, document)
     
     # Only characterize
     if args.characters:
         with open(annotation_file, 'r', encoding='utf-8') as f:
-            annotations = json.load(f)
-        annotations = resolve_characters(annotations)
-        save_json(annotation_file, annotations)
+            document = json.load(f)
+        document = resolve_characters(document)
+        save_json(annotation_file, document)
     
     # Only narrate
     output_format = 'mp3'
     audio_file = os.path.join('output', config['_document_name'], config['_document_name']) + '.' + output_format
     if args.narrate:
         with open(annotation_file, 'r', encoding='utf-8') as f:
-            annotations = json.load(f)
-        merged_audio = narrate(annotations)
-        save_json(annotation_file, annotations)
+            document = json.load(f)
+        if not document.get('characters_resolved', False):
+            print("Characters have not been resolved yet, do so now:")
+            document = resolve_characters(document)
+        merged_audio = narrate(document)
+        save_json(annotation_file, document)
         merged_audio.export(audio_file, format=output_format)
     
     # Do the standard pipeline in case no keywords are given
     if not any(vars(args).values()):
-        annotations = annotate()
-        save_json(annotation_file, annotations)
-        annotations = resolve_characters(annotations)
-        save_json(annotation_file, annotations)
-        merged_audio = narrate(annotations)
+        document = annotate()
+        save_json(annotation_file, document)
+        document = resolve_characters(document)
+        save_json(annotation_file, document)
+        merged_audio = narrate(document)
         merged_audio.export(audio_file, format=output_format)
 
 

@@ -225,7 +225,7 @@ def resolve_characters(document: dict):
     return document
 
 
-def merge_audio(directory):
+def merge_audio_direct(directory):
     from pydub import AudioSegment
     
     # Regular expression to match the file pattern
@@ -261,6 +261,54 @@ def merge_audio(directory):
         # Delete audio file
         os.remove(os.path.join(directory, filename))
     
+    return final_audio
+
+
+def merge_audio(document, delete_waves=True):
+    """Merge all audio files in document annotations.
+    
+    Adds a short pause between segments of the same annotation
+    and a long pause between different annotations.
+    
+    Updates each annotation's duration to include the pauses
+    following its audio segments.
+    
+    Returns:
+        AudioSegment: The complete merged audio.
+    """
+    from pydub import AudioSegment
+    
+    annotations = document['annotation']
+    
+    short_pause = AudioSegment.silent(duration=500)
+    long_pause = AudioSegment.silent(duration=1000)
+    
+    final_audio = AudioSegment.empty()
+    for i, annotation in enumerate(annotations):
+        waves = annotation['waves']
+        
+        pause_duration = 0
+        for j, wave_file in enumerate(waves):
+            audio = AudioSegment.from_wav(wave_file)
+            final_audio += audio
+            
+            # Add pause between segments within this annotation
+            if j < len(waves) - 1:
+                final_audio += short_pause
+                pause_duration += 0.5
+        
+        # Add long pause between annotations
+        if i < len(annotations) - 1:
+            final_audio += long_pause
+            pause_duration += 1.0
+        
+        # Update duration to include all pauses after this annotation
+        annotation['duration'] = annotation['duration'] + pause_duration
+        
+        # Delete the individual audio files
+        if delete_waves:
+            for wave_file in waves:
+                os.remove(wave_file)
     return final_audio
 
 

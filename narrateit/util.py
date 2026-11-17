@@ -29,7 +29,10 @@ def clean_annotations(annotations):
 
 
 def annotate_without_llm(text):
-    result = {'annotation': [{'text': text, 'speaker': 'Narration'}], 'characters': {}}
+    result = {'annotation': [{'text': text, 'speaker': 'Narration'}],
+              'characters': {},
+              'characters_resolved': False,
+              'has_voice_mappings': False}
     return result
 
 
