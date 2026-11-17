@@ -1,0 +1,55 @@
+{
+  "voices": [
+    { "id": "Laura", "label": "Laura", "gender": "f", "age": 50, "preview": "web_samples/voices/laura.mp3" },
+    { "id": "Gary", "label": "Gary", "gender": "m", "age": 50, "preview": "web_samples/voices/gary.mp3" },
+    { "id": "Lea", "label": "Lea", "gender": "f", "age": 50, "preview": "web_samples/voices/lea.mp3" },
+    { "id": "Jon", "label": "Jon", "gender": "m", "age": 60, "preview": "web_samples/voices/jon.mp3" },
+    { "id": "Rick", "label": "Rick", "gender": "m", "age": 60, "preview": "web_samples/voices/rick.mp3" },
+    { "id": "David", "label": "David", "gender": "m", "age": 50, "preview": "web_samples/voices/david.mp3" },
+    { "id": "Jordan", "label": "Jordan", "gender": "m", "age": 8, "preview": "web_samples/voices/jordan.mp3" },
+    { "id": "Mike", "label": "Mike", "gender": "m", "age": 12, "preview": "web_samples/voices/mike.mp3" },
+    { "id": "Yann", "label": "Yann", "gender": "m", "age": 14, "preview": "web_samples/voices/yann.mp3" },
+    { "id": "Karen", "label": "Karen", "gender": "f", "age": 30, "preview": "web_samples/voices/karen.mp3" },
+    { "id": "Brenda", "label": "Brenda", "gender": "f", "age": 9, "preview": "web_samples/voices/brenda.mp3" },
+    { "id": "Eileen", "label": "Eileen", "gender": "f", "age": 10, "preview": "web_samples/voices/eileen.mp3" },
+    { "id": "Joy", "label": "Joy", "gender": "f", "age": 14, "preview": "web_samples/voices/joy.mp3" },
+    { "id": "Lauren", "label": "Lauren", "gender": "f", "age": 14, "preview": "web_samples/voices/lauren.mp3" },
+    { "id": "Rose", "label": "Rose", "gender": "f", "age": 50, "preview": "web_samples/voices/rose.mp3" },
+    { "id": "James", "label": "James", "gender": "m", "age": 30, "preview": "web_samples/voices/james.mp3" },
+    { "id": "Naomie", "label": "Naomie", "gender": "f", "age": 40, "preview": "web_samples/voices/naomie.mp3" },
+    { "id": "Eric", "label": "Eric", "gender": "m", "age": 40, "preview": "web_samples/voices/eric.mp3" },
+    { "id": "Alisa", "label": "Alisa", "gender": "f", "age": 20, "preview": "web_samples/voices/alisa.mp3" },
+    { "id": "Will", "label": "Will", "gender": "m", "age": 30, "preview": "web_samples/voices/will.mp3" },
+    { "id": "Tina", "label": "Tina", "gender": "f", "age": 30, "preview": "web_samples/voices/tina.mp3" },
+    { "id": "Jenna", "label": "Jenna", "gender": "f", "age": 30, "preview": "web_samples/voices/jenna.mp3" },
+    { "id": "Jason", "label": "Jason", "gender": "m", "age": 50, "preview": "web_samples/voices/jason.mp3" },
+    { "id": "Aaron", "label": "Aaron", "gender": "m", "age": 40, "preview": "web_samples/voices/aaron.mp3" },
+    { "id": "Carol", "label": "Carol", "gender": "f", "age": 40, "preview": "web_samples/voices/carol.mp3" },
+    { "id": "Patrick", "label": "Patrick", "gender": "m", "age": 30, "preview": "web_samples/voices/patrick.mp3" },
+    { "id": "Jerry", "label": "Jerry", "gender": "m", "age": 40, "preview": "web_samples/voices/jerry.mp3" },
+    { "id": "Bill", "label": "Bill", "gender": "m", "age": 30, "preview": "web_samples/voices/bill.mp3" },
+    { "id": "Tom", "label": "Tom", "gender": "m", "age": 30, "preview": "web_samples/voices/tom.mp3" },
+    { "id": "Barbara", "label": "Barbara", "gender": "f", "age": 30, "preview": "web_samples/voices/barbara.mp3" },
+    { "id": "Bruce", "label": "Bruce", "gender": "m", "age": 30, "preview": "web_samples/voices/bruce.mp3" }
+  ],
+  "samples": [
+    {
+      "id": "the-river-crossing",
+      "title": "The River Crossing",
+      "credit": "Written for this demo",
+      "blurb": "Two travellers and a narrator: a five-line quick test.",
+      "text": "web_samples/the-river-crossing/input.txt",
+      "annotation": "web_samples/the-river-crossing/annotations.json",
+      "audio": "web_samples/the-river-crossing/audio.mp3"
+    },
+    {
+      "id": "hpmor-ch1",
+      "title": "Harry Potter and the Methods of Rationality",
+      "credit": "Eliezer Yudkowsky",
+      "blurb": "Narration plus Harry arguiing about the existence of Hogwarts with himself and hiss parents.",
+      "text": "web_samples/hpmor-ch1/input.txt",
+      "annotation": "web_samples/hpmor-ch1/annotations.json",
+      "audio": "web_samples/hpmor-ch1/audio.mp3"
+    }
+  ]
+}

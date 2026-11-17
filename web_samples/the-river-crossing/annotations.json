@@ -1,0 +1,75 @@
+{
+    "annotation": [
+        {
+            "speaker": "Narration",
+            "text": "The kettle had just begun to sing when Mira looked up from the map.",
+            "duration": 5.597333333333333,
+            "waves": [
+                "output/the-river-crossing/waves/out_0000_00.wav"
+            ]
+        },
+        {
+            "speaker": "Mira",
+            "text": "\"We leave at dawn, whether the bridge is fixed or not.\"",
+            "duration": 3.506666666666667,
+            "waves": [
+                "output/the-river-crossing/waves/out_0001_00.wav"
+            ]
+        },
+        {
+            "speaker": "Narration",
+            "text": "Tobias set down his cup and frowned at the window, where the rain had not stopped all day.",
+            "duration": 6.749333333333333,
+            "waves": [
+                "output/the-river-crossing/waves/out_0002_00.wav"
+            ]
+        },
+        {
+            "speaker": "Tobias",
+            "text": "\"Then we had better hope the river is in a forgiving mood.\"",
+            "duration": 3.7306666666666666,
+            "waves": [
+                "output/the-river-crossing/waves/out_0003_00.wav"
+            ]
+        },
+        {
+            "speaker": "Mira",
+            "text": "\"It never is. That's why I packed the rope.\"",
+            "duration": 2.9226666666666667,
+            "waves": [
+                "output/the-river-crossing/waves/out_0004_00.wav"
+            ]
+        }
+    ],
+    "characters": {
+        "Narration": {
+            "name": "Narrator",
+            "n_dialogue": 2,
+            "gender": "m",
+            "age": 45,
+            "voice": "Bruce",
+            "voice_sample": "models_tts/XTTS-v2/samples/8224_274384_000015_000001.wav",
+            "voice_id": "David"
+        },
+        "Mira": {
+            "name": "Mira",
+            "n_dialogue": 2,
+            "gender": "f",
+            "age": 29,
+            "voice": "Laura",
+            "voice_sample": "models_tts/XTTS-v2/samples/en_sample.wav",
+            "voice_id": "Karen"
+        },
+        "Tobias": {
+            "name": "Tobias",
+            "n_dialogue": 1,
+            "gender": "m",
+            "age": 34,
+            "voice": "David",
+            "voice_sample": "models_tts/XTTS-v2/samples/p278_003.wav",
+            "voice_id": "Bill"
+        }
+    },
+    "characters_resolved": true,
+    "has_voice_mappings": true
+}

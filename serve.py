@@ -42,6 +42,7 @@ class RangeHandler(SimpleHTTPRequestHandler):
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.send_header("Content-Length", str(self._range))
+        self.send_header("Cache-Control", "no-store")  # TODO: Decide on whether to leave this for future versions
         self.end_headers()
         return f
 

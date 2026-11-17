@@ -431,7 +431,10 @@ const CONFIG = {
 };
 // merge: step 7 of the build plan. The algorithm is implemented; flip to true to exercise it.
 const FEATURES = { edit: false, timingSync: true, voicePreviews: true, merge: false };
-const API_MODE = 'demo';      // 'demo' | 'live'
+// 'demo' | 'live'. Always demo on the public GitHub Pages site; elsewhere demo
+// unless the URL has ?live (e.g. http://localhost:8000/?live once the backend exists).
+const API_MODE = (!location.hostname.endsWith('github.io')
+  && new URLSearchParams(location.search).has('live')) ? 'live' : 'demo';
 const NARRATION_KEYS = ['Narration', 'Narrator', 'narration', 'NARRATION'];
 const DEMO_TITLE = 'Disabled in demo mode — this works in the live version';
 
