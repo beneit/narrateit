@@ -22,4 +22,5 @@ prompts/*
 !prompts/structured_explanation_both.txt
 scripts/*
 !scripts/xtts_generate_voice_samples.py
+!scripts/kokoro_generate_voice_samples.py
 test_llm_output/

@@ -2,6 +2,7 @@ import os
 import re
 import json
 
+import numpy as np
 import torch
 from TTS.tts.configs.xtts_config import XttsConfig
 from TTS.tts.models.xtts import Xtts
@@ -15,6 +16,10 @@ from narrateit.util import config
 voices = json.load(open(os.path.join('output', 'xtts_voices', 'voices.json')))
 device = "cuda" if torch.cuda.is_available() else "cpu"
 warnings.filterwarnings("ignore", category=UserWarning, module="pyloudnorm")
+
+# XTTS fuses words across segment borders, so silence is added to the end of the wave files
+SEGMENT_PAUSE = 0.5   # seconds, between segments of one annotation
+SPEAKER_PAUSE = 1.0   # seconds, after each annotation (except the last one)
 
 
 def map_speakers(characters, model):
@@ -80,7 +85,8 @@ def make_embeddings(speaker_wavs, model):
 
 
 def create_wave(prompt, model, tts_config,
-                speaker_wav=None, gpt_cond_latent=None, speaker_embedding=None, output_file=None):
+                speaker_wav=None, gpt_cond_latent=None, speaker_embedding=None, output_file=None, pause_after=0.0):
+    """pause_after: seconds of silence appended to the wave. Returns the duration including the pause."""
     if output_file is None:
         output_file = "xtts2_tts_out.wav"
     if speaker_wav is None:
@@ -94,6 +100,8 @@ def create_wave(prompt, model, tts_config,
     # audio = pyln.normalize.peak(audio, -1.0)
     loudness = meter.integrated_loudness(audio)
     audio = pyln.normalize.loudness(audio, loudness, -14.0)
+    if pause_after > 0:
+        audio = np.concatenate([audio, np.zeros(int(pause_after * tts_config.audio.output_sample_rate))])
     sf.write(output_file, audio, tts_config.audio.output_sample_rate)
     return sf.info(output_file).duration
 
@@ -120,13 +128,14 @@ def create_wave_files(document, model, tts_config, output_path):
     characters = document['characters']
     voice_latents = map_speakers(characters, model)
     document['has_voice_mappings'] = True
+    document['tts_engine'] = 'xtts'
     print("Voice Mappings:")
     for c in sorted(characters.values(), key=lambda x: x['n_dialogue'], reverse=True):
         print(f"{c['name']}: {c['voice_sample']}")
     annotations = document['annotation']
     wave_number_1 = 0
     wave_number = 0
-    for annotation in tqdm(annotations):
+    for i_annotation, annotation in enumerate(tqdm(annotations)):
         text = annotation['text']
         gpt_cond_latent, speaker_embedding = voice_latents[annotation['speaker']]
         if len(text) > 300:
@@ -136,10 +145,14 @@ def create_wave_files(document, model, tts_config, output_path):
         wave_number_2 = 0
         duration = 0
         wave_files = []
-        for prompt in tqdm(text):
+        for i_prompt, prompt in enumerate(tqdm(text)):
+            if i_prompt < len(text) - 1:
+                pause_after = SEGMENT_PAUSE
+            else:
+                pause_after = SPEAKER_PAUSE if i_annotation < len(annotations) - 1 else 0.0
             output_file = os.path.join(output_path, f'out_{wave_number_1:04}_{wave_number_2:02}.wav')
             dt = create_wave(prompt, model, tts_config, gpt_cond_latent=gpt_cond_latent,
-                        speaker_embedding=speaker_embedding, output_file=output_file)
+                        speaker_embedding=speaker_embedding, output_file=output_file, pause_after=pause_after)
             wave_number += 1
             wave_number_2 += 1
             duration += dt

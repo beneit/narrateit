@@ -54,12 +54,13 @@ def annotate():
 
 
 def narrate(document):
-    from narrateit.tts.xtts_util import create_wave_files, load_tts
+    from narrateit.tts import import_tts
     from narrateit.narrate import merge_audio
-    # Create wave files
-    model, tokenizer = load_tts(config['tts_model'])
+    # Create wave files (engine is chosen by the model folder name in config['tts_model'])
+    load_tts, create_wave_files = import_tts(config['tts_model'])
+    model, tts_config = load_tts(config['tts_model'])
     output_path = os.path.join('output', config['_document_name'], 'waves')
-    create_wave_files(document, model, tokenizer, output_path)
+    create_wave_files(document, model, tts_config, output_path)
     # Create final audio
     return merge_audio(document)
 

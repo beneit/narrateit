@@ -25,7 +25,7 @@ Going through the text line by line, sentence by sentence
 (and potentially word by word) each section is classified 
 whether it be spoken by the Narrator or any particular 
 character. I am currently using Llama-3.2-3B-Instruct as the LLM
-and XTTS-v2 as the voice model which means that the environment
+and Kokoro-82M as the voice model which means that the environment
 needs both of them running (or two seperate environments, splitting the process)
 Edit the config:
 ```

@@ -265,13 +265,10 @@ def merge_audio_direct(directory):
 
 
 def merge_audio(document, delete_waves=True):
-    """Merge all audio files in document annotations.
+    """Merge all audio files in document annotations in order.
     
-    Adds a short pause between segments of the same annotation
-    and a long pause between different annotations.
-    
-    Updates each annotation's duration to include the pauses
-    following its audio segments.
+    Pauses are the responsibility of the TTS engine (they are part of the wave files and of
+    annotation['duration']), so the waves are simply concatenated.
     
     Returns:
         AudioSegment: The complete merged audio.
@@ -280,30 +277,11 @@ def merge_audio(document, delete_waves=True):
     
     annotations = document['annotation']
     
-    short_pause = AudioSegment.silent(duration=500)
-    long_pause = AudioSegment.silent(duration=1000)
-    
     final_audio = AudioSegment.empty()
-    for i, annotation in enumerate(annotations):
+    for annotation in annotations:
         waves = annotation['waves']
-        
-        pause_duration = 0
-        for j, wave_file in enumerate(waves):
-            audio = AudioSegment.from_wav(wave_file)
-            final_audio += audio
-            
-            # Add pause between segments within this annotation
-            if j < len(waves) - 1:
-                final_audio += short_pause
-                pause_duration += 0.5
-        
-        # Add long pause between annotations
-        if i < len(annotations) - 1:
-            final_audio += long_pause
-            pause_duration += 1.0
-        
-        # Update duration to include all pauses after this annotation
-        annotation['duration'] = annotation['duration'] + pause_duration
+        for wave_file in waves:
+            final_audio += AudioSegment.from_wav(wave_file)
         
         # Delete the individual audio files
         if delete_waves:
