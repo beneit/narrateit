@@ -50,10 +50,28 @@ NAMES_FEMALE = ['Laura', 'Lea', 'Karen', 'Brenda', 'Eileen', 'Joy', 'Lauren', 'R
                 'Jenna', 'Carol', 'Barbara', 'Rebecca', 'Anna', 'Emily', 'Clara', 'Sophie', 'Grace', 'Helen', 'Iris',
                 'Julia', 'Maya', 'Nora', 'Olivia', 'Ruth']
 
+# Approximate perceived age of every catalog voice (listened to by hand), keyed by preset recipe.
+# Only the brackets in AGE_BRACKETS are used.
+AGE_BRACKETS = (20, 30, 40, 50)
+VOICE_AGES = {
+    'af_heart': 30, 'af_bella': 20, 'af_nicole': 50, 'af_aoede': 40, 'af_kore': 40, 'af_sarah': 30, 'af_alloy': 50,
+    'af_nova': 40, 'af_sky': 50, 'af_jessica': 30, 'af_river': 40, 'af_heart+af_bella': 20, 'af_heart+af_nicole': 30,
+    'af_heart+af_aoede': 30, 'af_bella+af_nicole': 30, 'af_heart+af_kore': 30, 'af_bella+af_aoede': 30,
+    'af_nicole+af_aoede': 30, 'af_kore+af_sarah': 40, 'af_kore+af_alloy': 50, 'af_kore+af_nova': 40,
+    'af_sarah+af_alloy': 40, 'af_sarah+af_nova': 30, 'af_alloy+af_nova': 40, 'af_sky+af_jessica': 50,
+    'af_sky+af_river': 50, 'af_jessica+af_river': 40,
+    'am_fenrir': 20, 'am_michael': 50, 'am_puck': 30, 'am_echo': 30, 'am_eric': 30, 'am_liam': 40, 'am_onyx': 40,
+    'am_fenrir+am_michael': 50, 'am_fenrir+am_puck': 30, 'am_michael+am_puck': 50, 'am_fenrir+am_echo': 30,
+    'am_fenrir+am_eric': 20, 'am_fenrir+am_liam': 50, 'am_fenrir+am_onyx': 40, 'am_michael+am_echo': 50,
+    'am_michael+am_eric': 50, 'am_michael+am_liam': 40, 'am_michael+am_onyx': 50, 'am_puck+am_echo': 40,
+    'am_puck+am_eric': 30, 'am_puck+am_liam': 40, 'am_puck+am_onyx': 40, 'am_echo+am_eric': 50,
+    'am_echo+am_liam': 50, 'am_echo+am_onyx': 50, 'am_santa': 50, 'am_adam': 40,
+}
+
 
 def _build_catalog():
     """
-    Deterministic list of voices: {'id', 'gender', 'quality', 'presets'}.
+    Deterministic list of voices: {'id', 'gender', 'age', 'quality', 'presets'}.
     Per gender: presets ordered by grade, followed by 50/50 blends of two presets (best pairs first, each preset
     used in a limited number of blends so they stay distinct) until every name in the name list is used, and finally
     the presets graded below MIN_BLEND_SCORE.
@@ -88,7 +106,7 @@ def _build_catalog():
                   [{'presets': [p], 'quality': q} for p, q in presets if q < MIN_BLEND_SCORE]
 
         for name, entry in zip(names, entries):
-            catalog.append({'id': name, 'gender': gender, **entry})
+            catalog.append({'id': name, 'gender': gender, 'age': VOICE_AGES.get('+'.join(entry['presets'])), **entry})
     return catalog
 
 
@@ -164,11 +182,35 @@ def _gender(character):
     return gender
 
 
+def _age(character):
+    try:
+        return float(character.get('age'))
+    except (TypeError, ValueError):
+        return None
+
+
+def _age_penalty(voice_age, character_age):
+    """
+    0 if the voice's age bracket fits the character, otherwise the distance in years to the closest fitting bracket.
+    Fitting brackets are the ones enclosing the character's age (25 -> 20 and 30, 30 -> 30). Ages outside the
+    bracket range are clamped (8 -> 20, 70 -> 50).
+    """
+    if character_age is None or voice_age is None:
+        return 0
+    age = min(max(character_age, AGE_BRACKETS[0]), AGE_BRACKETS[-1])
+    lower = max(b for b in AGE_BRACKETS if b <= age)
+    upper = min(b for b in AGE_BRACKETS if b >= age)
+    return min(abs(voice_age - lower), abs(voice_age - upper))
+
+
 def map_speakers(document):
     """
     Sets 'voice_id' on every character. Existing Kokoro mappings (document['tts_engine'] == 'kokoro') are kept as long
-    as the voice_id exists, so mappings can be edited by hand. All other characters get the best unused voice of their
-    gender, most dialogue first. If a gender runs out of voices, the least used voice is reused.
+    as the voice_id exists, so mappings can be edited by hand. All other characters, most dialogue first, get an
+    unused voice of their gender, chosen by
+      1. age: a voice whose bracket fits the character, otherwise the closest bracket still available
+      2. quality: catalog order (good presets, blends, poor presets)
+    If a gender runs out of voices, the least used voice is reused (again preferring the best age fit).
     """
     characters = document['characters']
     keep_existing = document.get('tts_engine') == ENGINE
@@ -183,7 +225,9 @@ def map_speakers(document):
             pending.append(character)
     for character in pending:
         candidates = [v for v in CATALOG if v['gender'] == _gender(character)]
-        voice = min(candidates, key=lambda v: usage[v['id']])  # ties resolve in catalog (= quality) order
+        character_age = _age(character)
+        # min() keeps the first of equal keys, so remaining ties resolve in catalog (= quality) order
+        voice = min(candidates, key=lambda v: (usage[v['id']], _age_penalty(v['age'], character_age)))
         if usage[voice['id']] > 0:
             print(f"Warning: out of unused voices, '{character.get('name')}' shares voice '{voice['id']}'")
         character['voice_id'] = voice['id']
@@ -198,7 +242,8 @@ def create_wave_files(document, model, tts_config, output_path):
     document['tts_engine'] = ENGINE
     print("Voice Mappings:")
     for c in sorted(characters.values(), key=lambda x: x.get('n_dialogue', 0), reverse=True):
-        print(f"{c['name']}: {c['voice_id']} ({' + '.join(VOICE_BY_ID[c['voice_id']]['presets'])})")
+        voice = VOICE_BY_ID[c['voice_id']]
+        print(f"{c['name']} (age {c.get('age')}): {c['voice_id']} (age {voice['age']}, {' + '.join(voice['presets'])})")
     voices = {key: load_voice(c['voice_id'], tts_config) for key, c in characters.items()}
 
     annotations = document['annotation']
