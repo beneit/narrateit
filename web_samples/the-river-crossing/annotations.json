@@ -47,7 +47,6 @@
             "n_dialogue": 2,
             "gender": "m",
             "age": 45,
-            "voice": "Bruce",
             "voice_sample": "models_tts/XTTS-v2/samples/8224_274384_000015_000001.wav",
             "voice_id": "David"
         },
@@ -56,7 +55,6 @@
             "n_dialogue": 2,
             "gender": "f",
             "age": 29,
-            "voice": "Laura",
             "voice_sample": "models_tts/XTTS-v2/samples/en_sample.wav",
             "voice_id": "Karen"
         },
@@ -65,7 +63,6 @@
             "n_dialogue": 1,
             "gender": "m",
             "age": 34,
-            "voice": "David",
             "voice_sample": "models_tts/XTTS-v2/samples/p278_003.wav",
             "voice_id": "Bill"
         }

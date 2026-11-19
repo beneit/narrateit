@@ -23,7 +23,7 @@
     --bg: #131210; --surface: #1c1a17; --ink: #ece8e0; --muted: #9a948a;
     --border: #2e2b26; --accent: #e0765f; --info-bg: #1b1f27; --info-line: #6d87a8;
     --neutral-bg: #2a2824; --neutral-ink: #c9c3b8; --dot-l: 62%;
-    --chip-s: 34%; --chip-l: 20%; --chip-ts: 60%; --chip-tl: 76%;
+    --chip-s: 45%; --chip-l: 24%; --chip-ts: 70%; --chip-tl: 78%;
     --shadow: none;
   }
 }
@@ -419,7 +419,7 @@ const CONFIG = {
   MAX_WORDS: 6000,
   MAX_CHARS: 45000,
   MAX_SAMPLES: 5,
-  HUES: [8, 32, 190, 148, 262, 330, 212, 98, 288, 352],
+  HUES: [210, 25, 140, 300, 175, 350, 85, 250, 50, 320],   // ordered so neighbours in the cast are far apart on the wheel
   WPM: 150,
   CHUNK: 200,                 // transcript rows per append
   ANALYZE_MS: 2400,
@@ -620,7 +620,7 @@ function normalise(output, voices) {
       console.warn(`[narrateit] "${key}": n_dialogue is ${c.n_dialogue} but annotation has ${n} segments; using ${n}`);
     return {
       key, name: c?.name || key, gender: c?.gender ?? null, age: c?.age ?? null,
-      lines: n, voice: c?.voice ?? null, isNarration: NARRATION_KEYS.includes(key), hue: null,
+      lines: n, voice: c?.voice_id ?? c?.voice ?? null, isNarration: NARRATION_KEYS.includes(key), hue: null,
     };
   });
 
@@ -687,7 +687,7 @@ function toPayload(model) {
   return {
     annotation: model.lines.map(l => ({ speaker: l.key, text: l.text })),
     characters: Object.fromEntries(model.cast.map(c => [c.key, {
-      name: c.name, n_dialogue: c.lines, gender: c.gender, age: c.age, voice: c.voice,
+      name: c.name, n_dialogue: c.lines, gender: c.gender, age: c.age, voice_id: c.voice,
     }])),
   };
 }

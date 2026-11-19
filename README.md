@@ -9,6 +9,7 @@
 - Convert a book to an audiobook using character specific narration.
 - Text is annotated using an LLM. Supports huggingface text-to-text (causal language) models
 - Annotated text is converted to audio using neural speech synthesis
+- Static Demo of the webapp using processed data: https://beneit.github.io/narrateit/
 
 
 ### Installation
