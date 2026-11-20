@@ -69,7 +69,7 @@
       "id": "hpmor-ch1",
       "title": "Harry Potter and the Methods of Rationality",
       "credit": "Eliezer Yudkowsky",
-      "blurb": "Narration plus Harry arguiing about the existence of Hogwarts with himself and hiss parents.",
+      "blurb": "Harry wondering about the existence of Hogwarts with himself and his parents.",
       "text": "web_samples/hpmor-ch1/input.txt",
       "annotation": "web_samples/hpmor-ch1/annotations.json",
       "audio": "web_samples/hpmor-ch1/audio.mp3"
